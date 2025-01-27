@@ -120,6 +120,9 @@ class LostValuesVisualizationColab:
             # Connect observers after widgets are created
             self._connect_observers()
             
+            # Create the container
+            self.container = self.display_chart()
+            
             # Force display of widgets in Colab
             display(self.container)
             

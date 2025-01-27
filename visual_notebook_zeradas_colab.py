@@ -111,19 +111,17 @@ class LostValuesVisualizationColab:
                     'seg3': sorted(seg3_options | {'Todas'})
                 }
             
-            # Now create widgets after all options are set
+            # Create widgets first
             self._create_widgets()
             
-            # Initialize geographic filters
+            # Then initialize geographic filters
             self._load_regions()
             
-            # Connect observers after widgets are created
+            # Connect observers
             self._connect_observers()
             
-            # Create the container
+            # Finally create and display the container
             self.container = self.display_chart()
-            
-            # Force display of widgets in Colab
             display(self.container)
             
             self.debug_print("Initialization complete!")

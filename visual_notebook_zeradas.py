@@ -7,10 +7,7 @@ import ipywidgets as widgets
 from IPython.display import display, clear_output
 import pandas as pd
 import numpy as np
-import psycopg2
-import psycopg2.extras
 import logging
-from psycopg2.extras import RealDictCursor
 from pathlib import Path
 import re
 import plotly.express as px

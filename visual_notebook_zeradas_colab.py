@@ -42,22 +42,6 @@ class LostValuesVisualizationColab:
                 )
             )
             
-            
-            # Enable widget display in Colab
-            logger.info("Enabling Colab widget display...")
-            display(HTML("""
-                <script src="/static/components/requirejs/require.js"></script>
-                <script>
-                  requirejs.config({
-                    paths: {
-                      base: '/static/base',
-                      plotly: 'https://cdn.plot.ly/plotly-latest.min'
-                    },
-                  });
-                </script>
-            """))
-            logger.info("Colab widget display enabled")
-            
             with self.log_output:
                 print("Loading data...")
                 print(f"Reading CSV from: {data_path}")
@@ -149,6 +133,10 @@ class LostValuesVisualizationColab:
             
             # Create and display container
             self.container = self.display_chart()
+            
+            # Force display of the container
+            with self.log_output:
+                print("Displaying visualization interface...")
             display(self.container)
             
             with self.log_output:
@@ -156,10 +144,10 @@ class LostValuesVisualizationColab:
             
         except Exception as e:
             with self.log_output:
-                print(f"Error: {str(e)}")
+                print(f"Error initializing visualization: {str(e)}")
                 print(traceback.format_exc())
             
-    def load_csv_in_chunks(self, filepath, chunksize=100000):
+    def load_csv_in_chunks(self, filepath, chunksize=500000):
         try:
             chunks = []
             for chunk in pd.read_csv(filepath, chunksize=chunksize, 
@@ -296,63 +284,40 @@ class LostValuesVisualizationColab:
         try:
             with self.log_output:
                 print("\nBuilding display:")
-                print("- Creating title...")
             
-            # Title
+            # Create all components first
             title = widgets.HTML(
                 "<h2 style='text-align: center; margin: 20px 0; color: #2c3e50; font-family: Arial, sans-serif; padding: 15px; border-bottom: 2px solid #3498db;'>Visualização de Valores Perdidos</h2>"
             )
             
-            with self.log_output:
-                print("- Creating notes...")
-
             notas = widgets.HTML(
                 "<h4 style='text-align: left; margin: 15px 0; color: #2c3e50; font-family: Arial, sans-serif;'>NIVEL - Como os dados zerados do nivel hirárquico logo abaixo serão agregados. Ex.: Nivel = SG_UF, dados de MUNICIPIOS zerados são agregados por UF.<br>SEGMENTAÇÕES 2 e 3 - Somente disponível para NIVEL = NO_REGIAO.<br>FILTRO GEOGRÁFICO - Seleção obrigatória se NIVEL <> NO_REGIAO. Se NIVEL = SG_UF, uma Região deve ser selecionada. Se NIVEL = CO_ENTIDADE, um Município deve ser selecionado.</br></h4>"
             )
             
-            with self.log_output:
-                print("- Creating controls sections...")
-            
-            # Controls in sections
             controls_title = widgets.HTML("<h3 style='color: #2c3e50; font-family: Arial, sans-serif; margin: 15px 0;'>Controles</h3>")
             
+            # Controls sections
             query_controls = widgets.VBox([
                 widgets.HTML("<b>Configuração da Query</b>"),
-                widgets.HBox([
-                    self.aggregation_dropdown,
-                    self.hierarchy_dropdown
-                ])
+                widgets.HBox([self.aggregation_dropdown, self.hierarchy_dropdown])
             ])
             
             segmentation_controls = widgets.VBox([
                 widgets.HTML("<b>Segmentações</b>"),
-                widgets.HBox([
-                    self.segment2_dropdown,
-                    self.segment3_dropdown
-                ])
+                widgets.HBox([self.segment2_dropdown, self.segment3_dropdown])
             ])
             
             param_controls = widgets.VBox([
                 widgets.HTML("<b>Parâmetros DP</b>"),
-                widgets.HBox([
-                    self.epsilon_dropdown,
-                    self.delta_dropdown
-                ])
+                widgets.HBox([self.epsilon_dropdown, self.delta_dropdown])
             ])
             
             geo_controls = widgets.VBox([
                 widgets.HTML("<b>Filtros Geográficos</b>"),
-                widgets.HBox([
-                    self.region_dropdown,
-                    self.uf_dropdown,
-                    self.mun_dropdown
-                ])
+                widgets.HBox([self.region_dropdown, self.uf_dropdown, self.mun_dropdown])
             ])
             
-            with self.log_output:
-                print("- Creating main container...")
-            
-            # Main container
+            # Main container with all components
             container = widgets.VBox([
                 title,
                 notas,
@@ -369,7 +334,10 @@ class LostValuesVisualizationColab:
                 padding='20px',
                 width='100%',
                 border='1px solid #ddd',
-                margin='10px'
+                margin='10px',
+                display='flex',
+                flex_flow='column',
+                align_items='stretch'
             ))
             
             with self.log_output:

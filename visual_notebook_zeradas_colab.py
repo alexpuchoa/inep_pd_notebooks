@@ -273,7 +273,7 @@ class LostValuesVisualizationColab:
         """
         try:
             # Force clear any previous output
-            clear_output(wait=True)
+            #clear_output(wait=True)
             
             # Title
             

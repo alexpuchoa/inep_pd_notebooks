@@ -63,8 +63,11 @@ class LostValuesVisualizationColab:
             self.aggregation_options = [agg for agg in self.ordered_aggregations 
                                       if agg in self.df['aggregated_data'].str.upper().unique()]
             
-            # Create widgets and display interface
+            # Create widgets
+            print("\nCreating widgets:")
             self._create_widgets()
+            
+            # Display interface
             self.display_interface()
             
             print("Initialization complete!")
@@ -235,9 +238,6 @@ class LostValuesVisualizationColab:
             # Debug print
             print(f"Filtering with: agg={aggregation}, eps={epsilon}, delta={delta}")
             print(f"Geographic filters: region={region}, uf={uf}, mun={mun}")
-            
-            # Debug print column names
-            print("Available columns:", self.df.columns.tolist())
             
             # Filter data based on selections
             filtered_df = self.df[

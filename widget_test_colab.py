@@ -80,30 +80,30 @@ class WidgetTest:
     
     def create_initial_plot(self):
         """Create the initial plot."""
+        # Create sample data
+        x = np.linspace(0, 10, 100)
+        y = np.sin(x)
+        
+        # Create figure
+        fig = go.Figure()
+        fig.add_trace(go.Scatter(
+            x=x, 
+            y=y, 
+            mode='lines',
+            name='Initial Plot'
+        ))
+        fig.update_layout(
+            title='Sample Plot (Initial)',
+            height=400,
+            width=800,
+            showlegend=True
+        )
+        
+        # Display the figure
         with self.plot_output:
             clear_output(wait=True)
-            
-            # Create sample data
-            x = np.linspace(0, 10, 100)
-            y = np.sin(x)
-            
-            # Create figure
-            fig = go.Figure()
-            fig.add_trace(go.Scatter(
-                x=x, 
-                y=y, 
-                mode='lines',
-                name='Initial Plot'
-            ))
-            fig.update_layout(
-                title='Sample Plot (Initial)',
-                height=400,
-                width=800,
-                showlegend=True
-            )
-            
-            fig.show()  # Using show() instead of display()
-            print("Initial plot created")  # Debug message
+            fig.show()  # Show the figure first
+            print("Initial plot created")  # Debug message after showing
     
     def update_test1(self, b):
         print(f"Test 1 selected: {self.dropdown1.value}")
@@ -118,30 +118,30 @@ class WidgetTest:
     
     def update_plot(self, b):
         """Update the plot with new data."""
+        # Create sample data with different function
+        x = np.linspace(0, 10, 100)
+        y = np.cos(x)  # Changed to cos for visible difference
+        
+        # Create figure
+        fig = go.Figure()
+        fig.add_trace(go.Scatter(
+            x=x, 
+            y=y, 
+            mode='lines',
+            name='Updated Plot'
+        ))
+        fig.update_layout(
+            title='Sample Plot (Updated)',
+            height=400,
+            width=800,
+            showlegend=True
+        )
+        
+        # Display the figure
         with self.plot_output:
             clear_output(wait=True)
-            
-            # Create sample data with different function
-            x = np.linspace(0, 10, 100)
-            y = np.cos(x)  # Changed to cos for visible difference
-            
-            # Create figure
-            fig = go.Figure()
-            fig.add_trace(go.Scatter(
-                x=x, 
-                y=y, 
-                mode='lines',
-                name='Updated Plot'
-            ))
-            fig.update_layout(
-                title='Sample Plot (Updated)',
-                height=400,
-                width=800,
-                showlegend=True
-            )
-            
-            fig.show()  # Using show() instead of display()
-            print("Plot updated!")  # Debug message
+            fig.show()  # Show the figure first
+            print("Plot updated!")  # Debug message after showing
 
 # Create and display test app
 test_app = WidgetTest() 

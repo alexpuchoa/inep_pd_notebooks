@@ -273,7 +273,7 @@ class LostValuesVisualizationColab:
                 # Group by parent_regiao and calculate statistics
                 df_plot = filtered_df.groupby('parent_uf').agg({
                     # Count all rows in group
-                    'parent_uf': ('total_entities', 'count'),
+                    'group_by_val1': ('total_entities', 'count'),
                     # Count rows where dp_avg is 0 or NULL or lost > 0
                     'dp_avg': ('lost_entities', lambda x: ((x == 0.0) | x.isna() | (filtered_df['lost'] > 0)).sum())
                 }).reset_index()
@@ -291,7 +291,7 @@ class LostValuesVisualizationColab:
                 # Group by parent_regiao and calculate statistics
                 df_plot = filtered_df.groupby('parent_municipio').agg({
                     # Count all rows in group
-                    'parent_municipio': ('total_entities', 'count'),
+                    'group_by_val1': ('total_entities', 'count'),
                     # Count rows where dp_avg is 0 or NULL or lost > 0
                     'dp_avg': ('lost_entities', lambda x: ((x == 0.0) | x.isna() | (filtered_df['lost'] > 0)).sum())
                 }).reset_index()
@@ -307,7 +307,7 @@ class LostValuesVisualizationColab:
                 # Group by parent_regiao and calculate statistics
                 df_plot = filtered_df.groupby('parent_municipio').agg({
                     # Count all rows in group
-                    'parent_municipio': ('total_entities', 'count'),
+                    'group_by_val1': ('lost_entities','count'),
                     # Count rows where dp_avg is 0 or NULL or lost > 0
                     'dp_avg': ('lost_entities', lambda x: ((x == 0.0) | x.isna() | (filtered_df['lost'] > 0)).sum())
                 }).reset_index()
@@ -315,6 +315,9 @@ class LostValuesVisualizationColab:
                 xaxis_label = 'Escolas por Município'
                 xaxis_groupby = 'parent_municipio'
 
+
+            # Flatten column names
+            df_plot.columns = ['group_by_val1', 'total_entities', 'lost_entities']
             
             print(f"Filtered data shape: {filtered_df.shape}")
            

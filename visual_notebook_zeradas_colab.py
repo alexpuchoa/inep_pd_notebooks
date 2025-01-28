@@ -26,11 +26,17 @@ class LostValuesVisualizationColab:
     def __init__(self, data_path):
         """Initialize the visualization interface with CSV data."""
         try:
-            # Create a cell for logging output that won't be cleared
-            self.log_output = widgets.Output()
+            # Create and immediately display outputs
+            self.log_output = widgets.Output(
+                layout=widgets.Layout(
+                    border='1px solid #ddd',
+                    padding='10px',
+                    margin='10px 0',
+                    overflow_y='auto'
+                )
+            )
             display(self.log_output)
             
-            # Create debug output widget
             self.debug_output = widgets.Output(
                 layout=widgets.Layout(
                     height='200px',
@@ -41,6 +47,17 @@ class LostValuesVisualizationColab:
                     overflow_y='auto'
                 )
             )
+            display(self.debug_output)
+            
+            # Create visualization output
+            self.viz_output = widgets.Output(
+                layout=widgets.Layout(
+                    border='1px solid #ddd',
+                    padding='10px',
+                    margin='10px 0'
+                )
+            )
+            display(self.viz_output)
             
             with self.log_output:
                 print("Loading data...")
@@ -131,13 +148,14 @@ class LostValuesVisualizationColab:
             with self.log_output:
                 print("Creating display container...")
             
-            # Create and display container
+            # Create container
             self.container = self.display_chart()
             
-            # Force display of the container
-            with self.log_output:
-                print("Displaying visualization interface...")
-            display(self.container)
+            # Display in visualization output
+            with self.viz_output:
+                display(widgets.HTML("<h2>Visualization Interface:</h2>"))
+                display(self.container)
+                print("Interface should be visible above")
             
             with self.log_output:
                 print("Initialization complete!")
@@ -279,55 +297,70 @@ class LostValuesVisualizationColab:
 
     def display_chart(self):
         """
-        Display the visualization interface with improved layout for Colab
+        Create the visualization interface
         """
         try:
             with self.log_output:
                 print("\nBuilding display:")
             
-            # Create all components first
+            # Create all components
             title = widgets.HTML(
                 "<h2 style='text-align: center; margin: 20px 0; color: #2c3e50; font-family: Arial, sans-serif; padding: 15px; border-bottom: 2px solid #3498db;'>Visualização de Valores Perdidos</h2>"
             )
+            display(title)  # Force display of title
             
             notas = widgets.HTML(
                 "<h4 style='text-align: left; margin: 15px 0; color: #2c3e50; font-family: Arial, sans-serif;'>NIVEL - Como os dados zerados do nivel hirárquico logo abaixo serão agregados. Ex.: Nivel = SG_UF, dados de MUNICIPIOS zerados são agregados por UF.<br>SEGMENTAÇÕES 2 e 3 - Somente disponível para NIVEL = NO_REGIAO.<br>FILTRO GEOGRÁFICO - Seleção obrigatória se NIVEL <> NO_REGIAO. Se NIVEL = SG_UF, uma Região deve ser selecionada. Se NIVEL = CO_ENTIDADE, um Município deve ser selecionado.</br></h4>"
             )
+            display(notas)  # Force display of notes
             
             controls_title = widgets.HTML("<h3 style='color: #2c3e50; font-family: Arial, sans-serif; margin: 15px 0;'>Controles</h3>")
+            display(controls_title)  # Force display of controls title
             
-            # Controls sections
+            # Controls sections with forced display
             query_controls = widgets.VBox([
                 widgets.HTML("<b>Configuração da Query</b>"),
                 widgets.HBox([self.aggregation_dropdown, self.hierarchy_dropdown])
             ])
+            display(query_controls)
             
             segmentation_controls = widgets.VBox([
                 widgets.HTML("<b>Segmentações</b>"),
                 widgets.HBox([self.segment2_dropdown, self.segment3_dropdown])
             ])
+            display(segmentation_controls)
             
             param_controls = widgets.VBox([
                 widgets.HTML("<b>Parâmetros DP</b>"),
                 widgets.HBox([self.epsilon_dropdown, self.delta_dropdown])
             ])
+            display(param_controls)
             
             geo_controls = widgets.VBox([
                 widgets.HTML("<b>Filtros Geográficos</b>"),
                 widgets.HBox([self.region_dropdown, self.uf_dropdown, self.mun_dropdown])
             ])
+            display(geo_controls)
             
-            # Main container with all components
-            container = widgets.VBox([
-                title,
-                notas,
-                controls_title,
-                query_controls,
-                segmentation_controls,
-                param_controls,
-                geo_controls,
-                self.submit_button,
-                self.lost_values_fig,
+            # Display submit button
+            display(self.submit_button)
+            
+            # Display figures
+            display(self.lost_values_fig)
+            
+            # Debug section
+            display(widgets.HTML("<h4>Debug Messages:</h4>"))
+            display(self.debug_output)
+            
+            with self.log_output:
+                print("Display components created and displayed individually")
+            
+            # Return container for reference
+            return widgets.VBox([
+                title, notas, controls_title,
+                query_controls, segmentation_controls,
+                param_controls, geo_controls,
+                self.submit_button, self.lost_values_fig,
                 widgets.HTML("<h4>Debug Messages:</h4>"),
                 self.debug_output
             ], layout=widgets.Layout(
@@ -339,11 +372,6 @@ class LostValuesVisualizationColab:
                 flex_flow='column',
                 align_items='stretch'
             ))
-            
-            with self.log_output:
-                print("Display container built successfully!")
-            
-            return container
             
         except Exception as e:
             with self.log_output:

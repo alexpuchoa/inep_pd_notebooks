@@ -26,12 +26,9 @@ class LostValuesVisualizationColab:
     def __init__(self, data_path):
         """Initialize the visualization interface with CSV data."""
         try:
-            # Configure logging
-            logging.basicConfig(
-                level=logging.INFO,
-                format='%(asctime)s - %(levelname)s - %(message)s'
-            )
-            logger.info("Starting initialization...")
+            # Create a cell for logging output that won't be cleared
+            self.log_output = widgets.Output()
+            display(self.log_output)
             
             '''
             # Enable widget display in Colab
@@ -50,7 +47,6 @@ class LostValuesVisualizationColab:
             logger.info("Colab widget display enabled")
             '''
             # Initialize debug output
-            logger.info("Creating debug output widget...")
             self.debug_output = widgets.Output(
                 layout=widgets.Layout(
                     height='200px',
@@ -61,21 +57,16 @@ class LostValuesVisualizationColab:
                     overflow_y='auto'
                 )
             )
-            display(self.debug_output)  # Display debug output immediately in Colab
             
-            # Now we can use debug_print
-            self.debug_print("Loading data from CSV...")
-
+            with self.log_output:
+                print("Loading data...")
+                print(f"Reading CSV from: {data_path}")
+            
             self.data_path = Path(data_path)
             csv_path = self.data_path / "dp_results_stats_bq.csv"
             queries_file = self.data_path / "queries_formatadas_bq.csv"
 
-            display(self.debug_output)
-            logger.info("Debug output widget created")
-            
             # Load data using pandas
-            logger.info(f"Reading CSV from: {csv_path}")
-            '''
             self.df = pd.read_csv(csv_path, 
                                 dtype={
                                     'epsilon': 'float64',
@@ -83,38 +74,38 @@ class LostValuesVisualizationColab:
                                     'dp_avg': 'float64',
                                     'original_value': 'float64'
                                 }, sep=';', encoding='latin1', low_memory=False)
-            '''
-            self.df = self.load_csv_in_chunks(csv_path)
-            logger.info(f"Data loaded successfully. Shape: {self.df.shape}")
             
-            # Load queries configuration
-            #queries_file = Path(csv_path).parent / "queries_formatadas_bq.csv"
-            logger.info(f"Loading queries config from: {queries_file}")
+            with self.log_output:
+                print(f"Data loaded. Shape: {self.df.shape}")
+                print(f"Loading queries from: {queries_file}")
+            
             self.queries_config = pd.read_csv(queries_file, sep=';')
-            logger.info(f"Queries config loaded. Shape: {self.queries_config.shape}")
+            
+            with self.log_output:
+                print(f"Queries loaded. Shape: {self.queries_config.shape}")
+                print("Setting up options...")
             
             # Define ordered lists
-            logger.info("Setting up hierarchy levels and aggregations...")
             self.hierarchy_levels = ['NO_REGIAO', 'SG_UF', 'NO_MUNICIPIO', 'CO_ENTIDADE']
             self.ordered_aggregations = ['QT_ALUNOS', 'MEDIA_NOTA', 'SOMA_NOTAS']
             
             # Extract unique aggregated_data values
-            logger.info("Extracting aggregation options...")
             self.aggregation_options = [agg for agg in self.ordered_aggregations 
                                       if agg in self.df['aggregated_data'].str.upper().unique()]
-            logger.info(f"Available aggregations: {self.aggregation_options}")
+            
+            with self.log_output:
+                print(f"Available aggregations: {self.aggregation_options}")
+                print("Creating segmentation mapping...")
             
             # Create mapping of segmentation options
-            logger.info("Creating segmentation mapping...")
             self.segmentation_map = {}
             for agg in self.aggregation_options:
-                logger.info(f"Processing aggregation: {agg}")
-                agg_queries = self.queries_config[self.queries_config['aggregated_data'].str.upper() == agg]
+                with self.log_output:
+                    print(f"Processing aggregation: {agg}")
                 
-                # Parse group_by column
+                agg_queries = self.queries_config[self.queries_config['aggregated_data'].str.upper() == agg]
                 group_by_values = agg_queries['group_by'].dropna().unique()
                 
-                # Initialize segmentation options
                 seg2_options = set()
                 seg3_options = set()
                 
@@ -132,36 +123,39 @@ class LostValuesVisualizationColab:
                     'seg2': sorted(seg2_options | {'Todas'}),
                     'seg3': sorted(seg3_options | {'Todas'})
                 }
-                logger.info(f"Segmentation options for {agg}: {self.segmentation_map[agg]}")
+            
+            with self.log_output:
+                print("Creating widgets...")
             
             # Create widgets
-            logger.info("Creating widgets...")
             self._create_widgets()
-            logger.info("Widgets created successfully")
+            
+            with self.log_output:
+                print("Loading geographic filters...")
             
             # Initialize geographic filters
-            logger.info("Loading geographic filters...")
             self._load_regions()
-            logger.info("Geographic filters loaded")
+            
+            with self.log_output:
+                print("Connecting observers...")
             
             # Connect observers
-            logger.info("Connecting observers...")
             self._connect_observers()
-            logger.info("Observers connected")
+            
+            with self.log_output:
+                print("Creating display container...")
             
             # Create and display container
-            logger.info("Creating display container...")
             self.container = self.display_chart()
-            logger.info("Display container created")
-            
-            logger.info("Displaying container...")
             display(self.container)
             
-            logger.info("Initialization complete!")
+            with self.log_output:
+                print("Initialization complete!")
             
         except Exception as e:
-            logger.error(f"Error initializing visualization: {str(e)}")
-            logger.error(traceback.format_exc())
+            with self.log_output:
+                print(f"Error: {str(e)}")
+                print(traceback.format_exc())
             
     def load_csv_in_chunks(self, filepath, chunksize=100000):
         try:

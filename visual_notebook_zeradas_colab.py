@@ -259,12 +259,6 @@ class LostValuesVisualizationColab:
                     'dp_avg': lambda x: ((x == 0.0) | x.isna() | (filtered_df['lost'] > 0)).sum()
                 }).reset_index()
 
-                # Rename columns to more meaningful names
-                df_plot.columns = ['group_by_val1', 'total_entities', 'lost_entities']
-
-                xaxis_label = 'UFs por Região'
-                xaxis_groupby = 'group_by_val1'
-
             elif hierarchy == 'SG_UF':
                 filtered_df = filtered_df[filtered_df['group_by_col1'].str.upper() == 'NO_MUNICIPIO']
                 if region != 'Todas':
@@ -272,16 +266,13 @@ class LostValuesVisualizationColab:
                 if uf != 'Todas':
                     filtered_df = filtered_df[filtered_df['parent_uf'] == uf]
 
-                # Group by parent_regiao and calculate statistics
+                # Group by parent_uf and calculate statistics
                 df_plot = filtered_df.groupby('parent_uf').agg({
                     # Count all rows in group
-                    'group_by_val1': ('total_entities', 'count'),
+                    'group_by_val1': 'count',  # Simple count for total entities
                     # Count rows where dp_avg is 0 or NULL or lost > 0
-                    'dp_avg': ('lost_entities', lambda x: ((x == 0.0) | x.isna() | (filtered_df['lost'] > 0)).sum())
+                    'dp_avg': lambda x: ((x == 0.0) | x.isna() | (filtered_df['lost'] > 0)).sum()
                 }).reset_index()
-
-                xaxis_label = 'Municípios por UF'
-                xaxis_groupby = 'parent_uf'
 
             elif hierarchy == 'NO_MUNICIPIO':
                 filtered_df = filtered_df[filtered_df['group_by_col1'].str.upper() == 'CO_ENTIDADE']
@@ -290,35 +281,28 @@ class LostValuesVisualizationColab:
                 if mun != 'Todas':
                     filtered_df = filtered_df[filtered_df['parent_municipio'] == mun]
 
-                # Group by parent_regiao and calculate statistics
+                # Group by parent_municipio and calculate statistics
                 df_plot = filtered_df.groupby('parent_municipio').agg({
                     # Count all rows in group
-                    'group_by_val1': ('total_entities', 'count'),
+                    'group_by_val1': 'count',  # Simple count for total entities
                     # Count rows where dp_avg is 0 or NULL or lost > 0
-                    'dp_avg': ('lost_entities', lambda x: ((x == 0.0) | x.isna() | (filtered_df['lost'] > 0)).sum())
+                    'dp_avg': lambda x: ((x == 0.0) | x.isna() | (filtered_df['lost'] > 0)).sum()
                 }).reset_index()
-
-                xaxis_label = 'Escolas por Município'
-                xaxis_groupby = 'parent_municipio'
 
             elif hierarchy == 'CO_ENTIDADE':
                 filtered_df = filtered_df[filtered_df['group_by_col1'].str.upper() == 'CO_ENTIDADE']
                 if mun != 'Todas':
                     filtered_df = filtered_df[filtered_df['parent_municipio'] == mun]
             
-                # Group by parent_regiao and calculate statistics
+                # Group by parent_municipio and calculate statistics
                 df_plot = filtered_df.groupby('parent_municipio').agg({
                     # Count all rows in group
-                    'group_by_val1': ('lost_entities','count'),
+                    'group_by_val1': 'count',  # Simple count for total entities
                     # Count rows where dp_avg is 0 or NULL or lost > 0
-                    'dp_avg': ('lost_entities', lambda x: ((x == 0.0) | x.isna() | (filtered_df['lost'] > 0)).sum())
+                    'dp_avg': lambda x: ((x == 0.0) | x.isna() | (filtered_df['lost'] > 0)).sum()
                 }).reset_index()
 
-                xaxis_label = 'Escolas por Município'
-                xaxis_groupby = 'parent_municipio'
-
-
-            # Flatten column names
+            # Rename columns consistently
             df_plot.columns = ['group_by_val1', 'total_entities', 'lost_entities']
             
             print(f"Filtered data shape: {filtered_df.shape}")
@@ -333,7 +317,7 @@ class LostValuesVisualizationColab:
             # Create percentage plot
             fig_percentages = go.Figure()
             fig_percentages.add_trace(go.Bar(
-                x=df_plot[xaxis_groupby],
+                x=df_plot['group_by_val1'],
                 y=df_plot['percentage'],
                 name='Percentual',
                 text=df_plot['percentage'].round(2),
@@ -341,7 +325,7 @@ class LostValuesVisualizationColab:
             ))
             fig_percentages.update_layout(
                 title='Percentual de Valores Perdidos',
-                xaxis_title=xaxis_label,
+                xaxis_title='Entidades',
                 yaxis_title='Percentual de entidades perdidas (%)',
                 showlegend=True,
                 height=400,
@@ -351,7 +335,7 @@ class LostValuesVisualizationColab:
             # Create totals plot
             fig_totals = go.Figure()
             fig_totals.add_trace(go.Bar(
-                x=df_plot[xaxis_groupby],
+                x=df_plot['group_by_val1'],
                 y=df_plot['total_lost'],
                 name='Total',
                 text=df_plot['total_lost'].round(0),
@@ -359,7 +343,7 @@ class LostValuesVisualizationColab:
             ))
             fig_totals.update_layout(
                 title='Total de Valores Perdidos',
-                xaxis_title=xaxis_label,
+                xaxis_title='Entidades',
                 yaxis_title='Total de entidades',
                 showlegend=True,
                 height=400,

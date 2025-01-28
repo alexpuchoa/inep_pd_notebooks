@@ -36,6 +36,9 @@ class LostValuesVisualizationColab:
             )
             display(self.log_output)
             
+            with self.log_output:
+                print("Starting initialization...")
+            
             # Create debug output widget
             self.debug_output = widgets.Output(
                 layout=widgets.Layout(
@@ -52,29 +55,53 @@ class LostValuesVisualizationColab:
                 print("Loading data...")
                 print(f"Reading CSV from: {data_path}")
             
-            self.data_path = Path(data_path)
-            csv_path = self.data_path / "dp_results_stats_bq.csv"
-            queries_file = self.data_path / "queries_formatadas_bq.csv"
-            '''
-            # Load data using pandas
-            self.df = pd.read_csv(csv_path, 
-                                dtype={
-                                    'epsilon': 'float64',
-                                    'delta': 'float64',
-                                    'dp_avg': 'float64',
-                                    'original_value': 'float64'
-                                }, sep=';', encoding='latin1', low_memory=False)
-            '''
-            self.df = self.load_csv_in_chunks(csv_path)
+            # Load data with chunking and better error handling
+            try:
+                self.data_path = Path(data_path)
+                csv_path = self.data_path / "dp_results_stats_bq.csv"
+                queries_file = self.data_path / "queries_formatadas_bq.csv"
+                
+                # Load data in chunks
+                chunks = []
+                chunk_size = 500000  # Adjust if needed
+                
+                for i, chunk in enumerate(pd.read_csv(
+                    csv_path,
+                    dtype={
+                        'epsilon': 'float64',
+                        'delta': 'float64',
+                        'dp_avg': 'float64',
+                        'original_value': 'float64'
+                    },
+                    sep=';',
+                    encoding='latin1',
+                    chunksize=chunk_size
+                )):
+                    with self.log_output:
+                        print(f"Chunk {i+1} loaded...")
+                    chunks.append(chunk)
+                
+                with self.log_output:
+                    print("Concatenating chunks...")
+                self.df = pd.concat(chunks, ignore_index=True)
+                with self.log_output:
+                    print(f"Data loaded successfully. Shape: {self.df.shape}")
+                
+                # Load queries configuration
+                with self.log_output:
+                    print(f"Loading queries from: {queries_file}")
+                self.queries_config = pd.read_csv(queries_file, sep=';')
+                with self.log_output:
+                    print(f"Queries loaded. Shape: {self.queries_config.shape}")
+                
+            except Exception as e:
+                with self.log_output:
+                    print(f"Error loading data: {str(e)}")
+                    print(traceback.format_exc())
+                raise
             
+            # Continue with initialization
             with self.log_output:
-                print(f"Data loaded. Shape: {self.df.shape}")
-                print(f"Loading queries from: {queries_file}")
-            
-            self.queries_config = pd.read_csv(queries_file, sep=';')
-            
-            with self.log_output:
-                print(f"Queries loaded. Shape: {self.queries_config.shape}")
                 print("Setting up options...")
             
             # Define ordered lists
@@ -116,10 +143,9 @@ class LostValuesVisualizationColab:
                     'seg3': sorted(seg3_options | {'Todas'})
                 }
             
+            # Create widgets
             with self.log_output:
                 print("Creating widgets...")
-            
-            # Create widgets
             self._create_widgets()
             
             # Initialize geographic filters
@@ -147,28 +173,9 @@ class LostValuesVisualizationColab:
             
         except Exception as e:
             with self.log_output:
-                print(f"Error initializing visualization: {str(e)}")
+                print(f"Error in initialization: {str(e)}")
                 print(traceback.format_exc())
             
-    def load_csv_in_chunks(self, filepath, chunksize=500000):
-        try:
-            chunks = []
-            for chunk in pd.read_csv(filepath, chunksize=chunksize, 
-                                    dtype={
-                                            'epsilon': 'float64',
-                                            'delta': 'float64',
-                                            'dp_avg': 'float64',
-                                            'original_value': 'float64'
-                                        },
-                                     sep=';', encoding='latin1', low_memory=False):
-                chunks.append(chunk)
-                print(f"Chunk {len(chunks)} loaded...")
-            df = pd.concat(chunks, ignore_index=True)
-            return df
-        except Exception as e:
-            print(f"Error reading CSV in chunks: {str(e)}")
-            raise
-        
     def _create_widgets(self):
         """
         Cria os widgets com nova estrutura baseada em agregações e segmentações.

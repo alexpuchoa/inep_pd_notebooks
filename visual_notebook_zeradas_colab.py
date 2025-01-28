@@ -180,8 +180,41 @@ class LostValuesVisualizationColab:
             )
             
             print("- Creating figure widgets...")
-            # Create plots output area
-            self.plots_output = widgets.Output()
+            # Create output widget for plots
+            self.plots_output = widgets.Output(
+                layout=widgets.Layout(
+                    width='100%',
+                    height='800px',  # Explicit height for both plots
+                    border='1px solid #ddd',
+                    margin='20px 0'
+                )
+            )
+            
+            # Initialize empty figures
+            self.fig_percentages = go.Figure(
+                layout=go.Layout(
+                    height=400,
+                    width=900,
+                    title='Percentual de Valores Perdidos',
+                    showlegend=True,
+                    margin=dict(t=50, b=50)  # Add margins
+                )
+            )
+            
+            self.fig_totals = go.Figure(
+                layout=go.Layout(
+                    height=400,
+                    width=900,
+                    title='Total de Valores Perdidos',
+                    showlegend=True,
+                    margin=dict(t=50, b=50)  # Add margins
+                )
+            )
+            
+            # Display initial empty plots
+            with self.plots_output:
+                display(self.fig_percentages)
+                display(self.fig_totals)
             
             print("All widgets created successfully!")
             
@@ -265,8 +298,7 @@ class LostValuesVisualizationColab:
     def update_plot(self, button_clicked=None):
         """Update plot with the current selections."""
         try:
-            with self.log_output:
-                print("\nUpdating plots...")
+            print("\nUpdating plots...")
             
             # Validate required selections based on hierarchy level
             hierarchy_level = self.hierarchy_dropdown.value
@@ -313,51 +345,54 @@ class LostValuesVisualizationColab:
             #self.debug_print(f"Retrieved {len(results)} rows")
             self.plot_lost_values(results)
             
-            # Update percentage figure
-            self.fig_percentages = go.Figure()
-            self.fig_percentages.add_trace(go.Bar(
+            # Create new figures
+            fig_percentages = go.Figure()
+            fig_percentages.add_trace(go.Bar(
                 x=results['group_by_val1'],
                 y=results['lost_entities'] / results['total_entities'] * 100,
                 name='Percentual',
                 text=[f'{p:.1f}%' for p in results['lost_entities'] / results['total_entities'] * 100],
                 textposition='auto',
             ))
-            self.fig_percentages.update_layout(
+            fig_percentages.update_layout(
                 title='Percentual de Valores Perdidos',
                 xaxis_title='Valor',
                 yaxis_title='Percentual (%)',
-                showlegend=True
+                showlegend=True,
+                height=400,
+                width=900,
+                margin=dict(t=50, b=50)
             )
             
-            # Update totals figure
-            self.fig_totals = go.Figure()
-            self.fig_totals.add_trace(go.Bar(
+            fig_totals = go.Figure()
+            fig_totals.add_trace(go.Bar(
                 x=results['group_by_val1'],
                 y=results['total_entities'],
                 name='Total',
                 text=[f'Total: {total}' for total in results['total_entities']],
                 textposition='auto',
             ))
-            self.fig_totals.update_layout(
+            fig_totals.update_layout(
                 title='Total de Valores Perdidos',
                 xaxis_title='Valor',
                 yaxis_title='Total',
-                showlegend=True
+                showlegend=True,
+                height=400,
+                width=900,
+                margin=dict(t=50, b=50)
             )
             
-            # Display updated plots
+            # Update plots in output widget
             with self.plots_output:
-                self.plots_output.clear_output(wait=True)
-                display(self.fig_percentages)
-                display(self.fig_totals)
+                clear_output(wait=True)
+                display(fig_percentages)
+                display(fig_totals)
             
-            with self.log_output:
-                print("Plots updated successfully!")
+            print("Plots updated successfully!")
             
         except Exception as e:
-            with self.log_output:
-                print(f"Error updating plots: {str(e)}")
-                print(traceback.format_exc())
+            print(f"Error updating plots: {str(e)}")
+            print(traceback.format_exc())
 
     def debug_print(self, *messages):
         """Helper method to print debug messages. Can handle multiple arguments."""
@@ -585,33 +620,26 @@ class LostValuesVisualizationColab:
         return ' - '.join(title_parts)
 
     def _connect_observers(self):
-        """
-        Conecta os observadores aos widgets.
-        """
+        """Connect widget observers."""
         try:
-            # Connect aggregation dropdown to update segmentation options
-            self.aggregation_dropdown.observe(self._on_aggregation_change, names='value')
-            
-            # Connect geographic filters
-            self.region_dropdown.observe(self._on_region_change, names='value')
-            self.uf_dropdown.observe(self._on_uf_change, names='value')
-            self.mun_dropdown.observe(self._on_mun_change, names='value')
-            
-            # Connect submit button
+            # Connect the submit button to update_plot
             self.submit_button.on_click(self.update_plot)
             
-            # Trigger initial region load
-            self._on_region_change(type('obj', (), {'new': self.region_dropdown.value})())
+            # Update segmentation options when aggregation changes
+            self.aggregation_dropdown.observe(self._update_segmentation_options, names='value')
             
-            with self.debug_output:
-                print("Observers connected successfully")
-                print("Ready to use - click 'Atualizar Gráfico' to update the visualization")
+            # Update geographic filters
+            self.region_dropdown.observe(self._update_ufs, names='value')
+            self.uf_dropdown.observe(self._update_municipios, names='value')
+            
+            print("Observers connected successfully")
+            print("Ready to use - click 'Atualizar Gráfico' to update the visualization")
             
         except Exception as e:
             print(f"Error connecting observers: {str(e)}")
             print(traceback.format_exc())
 
-    def _on_aggregation_change(self, change):
+    def _update_segmentation_options(self, change):
         """Handler for changes in aggregation selection"""
         try:
             new_agg = change.new
@@ -635,7 +663,7 @@ class LostValuesVisualizationColab:
             self.debug_print(f"Error in aggregation change handler: {str(e)}")
             self.debug_print(traceback.format_exc())
 
-    def _on_region_change(self, change):
+    def _update_ufs(self, change):
         """Handler para mudanças na região"""
         try:
             #self.debug_print(f"\nRegião alterada para: {change.new}")
@@ -661,7 +689,7 @@ class LostValuesVisualizationColab:
             self.debug_print(f"Error in region change handler: {str(e)}")
             self.debug_print(traceback.format_exc())
 
-    def _on_uf_change(self, change):
+    def _update_municipios(self, change):
         """Handler para mudanças na UF"""
         try:
             #self.debug_print(f"\nUF alterada para: {change.new}")

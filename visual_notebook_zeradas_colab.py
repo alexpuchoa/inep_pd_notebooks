@@ -23,7 +23,7 @@ logger = logging.getLogger(__name__)
 class LostValuesVisualizationColab:
     """Visualização específica para contagem de valores perdidos - Versão Colab."""
     
-    def __init__(self, csv_path):
+    def __init__(self, data_path):
         """Initialize the visualization interface with CSV data."""
         try:
             # Enable widget display in Colab
@@ -54,6 +54,10 @@ class LostValuesVisualizationColab:
             
             # Now we can use debug_print
             self.debug_print("Loading data from CSV...")
+
+            self.data_path = Path(data_path)
+            csv_path = self.data_path / "dp_results_stats_bq.csv"
+            queries_path = self.data_path / "queries_formatadas_bq.csv"
             
             # Load data using pandas
             self.df = pd.read_csv(csv_path, 
@@ -67,9 +71,9 @@ class LostValuesVisualizationColab:
             self.debug_print(f"Data loaded. Shape: {self.df.shape}")
             
             # Load queries configuration
-            queries_file = Path(csv_path).parent / "queries_formatadas_bq.csv"
+            #queries_file = Path(data_path).parent / "queries_formatadas_bq.csv"
             self.debug_print(f"Looking for queries file at: {queries_file}")
-            self.queries_config = pd.read_csv(queries_file, sep=';')
+            self.queries_config = pd.read_csv(queries_path, sep=';')
             
             # Define ordered lists
             self.hierarchy_levels = ['NO_REGIAO', 'SG_UF', 'NO_MUNICIPIO', 'CO_ENTIDADE']

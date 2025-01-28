@@ -277,15 +277,34 @@ class LostValuesVisualizationColab:
             with self.log_output:
                 print("- Creating figure widgets...")
             
-            # Initialize empty figures for the VBox
-            self.fig_percentages = go.FigureWidget()
-            self.fig_totals = go.FigureWidget()
+            # Initialize empty figures with explicit sizes
+            self.fig_percentages = go.FigureWidget(
+                layout=go.Layout(
+                    height=400,
+                    width=900,
+                    title='Percentual de Valores Perdidos',
+                    showlegend=True
+                )
+            )
             
-            # Create VBox with both figures
+            self.fig_totals = go.FigureWidget(
+                layout=go.Layout(
+                    height=400,
+                    width=900,
+                    title='Total de Valores Perdidos',
+                    showlegend=True
+                )
+            )
+            
+            # Create VBox with both figures and force their display
             self.lost_values_fig = widgets.VBox([
+                widgets.HTML("<h3>Gráficos:</h3>"),
                 self.fig_percentages,
                 self.fig_totals
-            ])
+            ], layout=widgets.Layout(
+                width='100%',
+                margin='20px 0'
+            ))
             
             with self.log_output:
                 print("All widgets created successfully!")
@@ -406,10 +425,11 @@ class LostValuesVisualizationColab:
             self.debug_print(traceback.format_exc())
 
     def update_plot(self, button_clicked=None):
-        """
-        Atualiza o gráfico de valores perdidos.
-        """
+        """Update plot with the current selections."""
         try:
+            with self.log_output:
+                print("\nUpdating plots...")
+            
             # Validate required selections based on hierarchy level
             hierarchy_level = self.hierarchy_dropdown.value
             
@@ -455,9 +475,47 @@ class LostValuesVisualizationColab:
             #self.debug_print(f"Retrieved {len(results)} rows")
             self.plot_lost_values(results)
             
+            # Update percentage figure
+            with self.fig_percentages.batch_update():
+                self.fig_percentages.data = []  # Clear previous data
+                self.fig_percentages.add_trace(go.Bar(
+                    x=results['group_by_val1'],
+                    y=results['lost_entities'] / results['total_entities'] * 100,
+                    name='Percentual',
+                    text=[f'{p:.1f}%' for p in results['lost_entities'] / results['total_entities'] * 100],
+                    textposition='auto',
+                ))
+                self.fig_percentages.update_layout(
+                    title='Percentual de Valores Perdidos',
+                    xaxis_title='Valor',
+                    yaxis_title='Percentual (%)',
+                    showlegend=True
+                )
+            
+            # Update totals figure
+            with self.fig_totals.batch_update():
+                self.fig_totals.data = []  # Clear previous data
+                self.fig_totals.add_trace(go.Bar(
+                    x=results['group_by_val1'],
+                    y=results['total_entities'],
+                    name='Total',
+                    text=[f'Total: {total}' for total in results['total_entities']],
+                    textposition='auto',
+                ))
+                self.fig_totals.update_layout(
+                    title='Total de Valores Perdidos',
+                    xaxis_title='Valor',
+                    yaxis_title='Total',
+                    showlegend=True
+                )
+            
+            with self.log_output:
+                print("Plots updated successfully!")
+            
         except Exception as e:
-            self.debug_print(f"Error updating plot: {str(e)}")
-            self.debug_print(traceback.format_exc())
+            with self.log_output:
+                print(f"Error updating plots: {str(e)}")
+                print(traceback.format_exc())
 
     def debug_print(self, *messages):
         """Helper method to print debug messages. Can handle multiple arguments."""

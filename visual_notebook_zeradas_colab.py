@@ -1,24 +1,17 @@
 import os
 os.environ["PYTHONIOENCODING"] = "cp1252"
 
-import plotly.graph_objects as go
-from plotly.subplots import make_subplots
 import ipywidgets as widgets
-from IPython.display import display, clear_output, HTML
+from IPython.display import display, clear_output
 import pandas as pd
 import numpy as np
-import logging
+import plotly.graph_objects as go
+import plotly.io as pio
 from pathlib import Path
-import re
-import plotly.express as px
 import traceback
 
-# Configure logging
-logging.basicConfig(
-    format='%(asctime)s - %(levelname)s - %(message)s',
-    level=logging.INFO
-)
-logger = logging.getLogger(__name__)
+# Set the default renderer for Plotly to work in Colab
+pio.renderers.default = 'colab'
 
 class LostValuesVisualizationColab:
     """Visualização específica para contagem de valores perdidos - Versão Colab."""
@@ -77,11 +70,14 @@ class LostValuesVisualizationColab:
             # Initialize geographic filters
             self._load_regions()
             
-            # Display each component individually
+            # Display interface components individually
             print("\nDisplaying interface components:")
             
-            # Title
+            # Title and description
             display(widgets.HTML("<h2>Visualização de Valores Perdidos</h2>"))
+            display(widgets.HTML(
+                "<h4>NIVEL - Como os dados zerados do nivel hirárquico logo abaixo serão agregados.</h4>"
+            ))
             
             # Query controls
             display(widgets.VBox([
@@ -117,6 +113,9 @@ class LostValuesVisualizationColab:
             # Connect observers
             self._connect_observers()
             
+            # Create initial plots
+            self.update_plot(None)
+            
             print("Initialization complete!")
             
         except Exception as e:
@@ -127,8 +126,6 @@ class LostValuesVisualizationColab:
         """Create the control widgets."""
         try:
             print("- Creating aggregation dropdown...")
-            
-            # Aggregation type dropdown
             self.aggregation_dropdown = widgets.Dropdown(
                 options=self.aggregation_options,
                 value=self.aggregation_options[0],
@@ -136,7 +133,6 @@ class LostValuesVisualizationColab:
             )
             
             print("- Creating hierarchy dropdown...")
-            # Hierarchical level dropdown
             self.hierarchy_dropdown = widgets.Dropdown(
                 options=self.hierarchy_levels,
                 value=self.hierarchy_levels[0],
@@ -144,7 +140,6 @@ class LostValuesVisualizationColab:
             )
             
             print("- Creating segmentation dropdowns...")
-            # Segmentation dropdowns
             self.segment2_dropdown = widgets.Dropdown(
                 options=['Todas'],
                 value='Todas',
@@ -158,7 +153,6 @@ class LostValuesVisualizationColab:
             )
             
             print("- Creating geographic filters...")
-            # Geographic filters
             self.region_dropdown = widgets.Dropdown(
                 options=['Todas'],
                 value='Todas',
@@ -178,7 +172,6 @@ class LostValuesVisualizationColab:
             )
             
             print("- Creating DP parameters...")
-            # DP parameters
             self.epsilon_dropdown = widgets.Dropdown(
                 options=sorted(self.df['epsilon'].unique()),
                 description='Epsilon:'
@@ -190,21 +183,18 @@ class LostValuesVisualizationColab:
             )
             
             print("- Creating submit button...")
-            # Submit button
             self.submit_button = widgets.Button(
                 description='Atualizar Gráfico',
                 button_style='primary',
                 tooltip='Clique para atualizar o gráfico'
             )
             
-            print("- Creating figure widgets...")
-            # Create output widget for plots
+            print("- Creating plot output...")
             self.plots_output = widgets.Output(
                 layout=widgets.Layout(
+                    height='1000px',  # Height for both plots
                     width='100%',
-                    height='800px',
-                    border='1px solid #ddd',
-                    margin='20px 0'
+                    border='1px solid #ddd'
                 )
             )
             
@@ -214,62 +204,199 @@ class LostValuesVisualizationColab:
             print(f"Error creating widgets: {str(e)}")
             print(traceback.format_exc())
 
-    def display_chart(self):
-        """Create the visualization interface."""
+    def update_plot(self, button_clicked=None):
+        """Update plot with the current selections."""
         try:
-            print("\nBuilding display:")
+            print("\nUpdating plots...")
             
-            # Create main interface container
-            interface = widgets.VBox([
-                widgets.HTML(
-                    "<h2 style='text-align: center; margin: 20px 0; color: #2c3e50;'>Visualização de Valores Perdidos</h2>"
-                ),
-                widgets.HTML(
-                    "<h4 style='text-align: left; margin: 15px 0; color: #2c3e50;'>NIVEL - Como os dados zerados do nivel hirárquico logo abaixo serão agregados.</h4>"
-                ),
-                widgets.VBox([
-                    widgets.HTML("<b>Configuração da Query</b>"),
-                    widgets.HBox([self.aggregation_dropdown, self.hierarchy_dropdown])
-                ]),
-                widgets.VBox([
-                    widgets.HTML("<b>Segmentações</b>"),
-                    widgets.HBox([self.segment2_dropdown, self.segment3_dropdown])
-                ]),
-                widgets.VBox([
-                    widgets.HTML("<b>Parâmetros DP</b>"),
-                    widgets.HBox([self.epsilon_dropdown, self.delta_dropdown])
-                ]),
-                widgets.VBox([
-                    widgets.HTML("<b>Filtros Geográficos</b>"),
-                    widgets.HBox([self.region_dropdown, self.uf_dropdown, self.mun_dropdown])
-                ]),
-                self.submit_button,
-                widgets.HTML("<h3>Gráficos:</h3>"),
-                self.plots_output
-            ], layout=widgets.Layout(
-                padding='20px',
-                width='100%',
-                border='1px solid #ddd',
-                margin='10px'
+            # Get current selections
+            aggregation = self.aggregation_dropdown.value
+            hierarchy = self.hierarchy_dropdown.value
+            seg2 = self.segment2_dropdown.value
+            seg3 = self.segment3_dropdown.value
+            epsilon = self.epsilon_dropdown.value
+            delta = self.delta_dropdown.value
+            region = self.region_dropdown.value
+            uf = self.uf_dropdown.value
+            mun = self.mun_dropdown.value
+            
+            # Filter data based on selections
+            filtered_df = self.df[
+                (self.df['aggregated_data'].str.upper() == aggregation)
+            ]
+            
+            # Apply geographic filters if selected
+            if region != 'Todas':
+                filtered_df = filtered_df[filtered_df['NO_REGIAO'] == region]
+            if uf != 'Todas':
+                filtered_df = filtered_df[filtered_df['SG_UF'] == uf]
+            if mun != 'Todas':
+                filtered_df = filtered_df[filtered_df['NO_MUNICIPIO'] == mun]
+            
+            # Group by epsilon and calculate statistics
+            df_plot = filtered_df.groupby('epsilon').agg({
+                'original_value': ['count', 'sum'],
+                'dp_avg': ['count']
+            }).reset_index()
+            
+            # Calculate percentages and totals
+            df_plot['percentage'] = (
+                (df_plot[('dp_avg', 'count')] - df_plot[('original_value', 'count')]) / 
+                df_plot[('original_value', 'count')] * 100
+            )
+            df_plot['total_lost'] = (
+                df_plot[('original_value', 'count')] - 
+                df_plot[('dp_avg', 'count')]
+            )
+            
+            # Create percentage plot
+            fig_percentages = go.Figure()
+            fig_percentages.add_trace(go.Bar(
+                x=df_plot['epsilon'].astype(str),
+                y=df_plot['percentage'],
+                name='Percentual',
+                text=df_plot['percentage'].round(2),
+                textposition='auto',
             ))
+            fig_percentages.update_layout(
+                title='Percentual de Valores Perdidos',
+                xaxis_title='Epsilon',
+                yaxis_title='Percentual (%)',
+                showlegend=True,
+                height=400,
+                width=900
+            )
             
-            print("Display interface built successfully")
-            return interface
+            # Create totals plot
+            fig_totals = go.Figure()
+            fig_totals.add_trace(go.Bar(
+                x=df_plot['epsilon'].astype(str),
+                y=df_plot['total_lost'],
+                name='Total',
+                text=df_plot['total_lost'].round(0),
+                textposition='auto',
+            ))
+            fig_totals.update_layout(
+                title='Total de Valores Perdidos',
+                xaxis_title='Epsilon',
+                yaxis_title='Total',
+                showlegend=True,
+                height=400,
+                width=900
+            )
+            
+            # Display plots
+            with self.plots_output:
+                clear_output(wait=True)
+                fig_percentages.show()
+                fig_totals.show()
+                print("Plots updated successfully!")
             
         except Exception as e:
-            print(f"Error creating interface: {str(e)}")
+            print(f"Error updating plots: {str(e)}")
+            print(traceback.format_exc())
+
+    def _connect_observers(self):
+        """Connect widget observers."""
+        try:
+            # Connect the submit button to update_plot
+            self.submit_button.on_click(self.update_plot)
+            
+            # Update segmentation options when aggregation changes
+            self.aggregation_dropdown.observe(self._update_segmentation_options, names='value')
+            
+            # Update geographic filters
+            self.region_dropdown.observe(self._update_ufs, names='value')
+            self.uf_dropdown.observe(self._update_municipios, names='value')
+            
+            print("Observers connected successfully")
+            print("Ready to use - click 'Atualizar Gráfico' to update the visualization")
+            
+        except Exception as e:
+            print(f"Error connecting observers: {str(e)}")
+            print(traceback.format_exc())
+
+    def _update_segmentation_options(self, change):
+        """Handler for changes in aggregation selection"""
+        try:
+            new_agg = change.new
+            print(f"\nAgregação alterada para: {new_agg}")
+            
+            # Update segmentation dropdowns with new options
+            current_level = self.hierarchy_dropdown.value
+            
+            # Only update hierarchy options if current value is not in new options
+            if current_level not in self.hierarchy_levels:
+                self.hierarchy_dropdown.value = self.hierarchy_levels[0]
+            
+            self.segment2_dropdown.options = ['Todas']
+            self.segment2_dropdown.value = 'Todas'
+            
+            self.segment3_dropdown.options = ['Todas']
+            self.segment3_dropdown.value = 'Todas'
+            
+        except Exception as e:
+            print(f"Error in aggregation change handler: {str(e)}")
+            print(traceback.format_exc())
+
+    def _update_ufs(self, change):
+        """Handler para mudanças na região"""
+        try:
+            if change.new == 'Todas':
+                self.uf_dropdown.options = ['Todas']
+            else:
+                # Debug print the data for this region
+                mask = self.df['parent_regiao'].str.upper() == change.new.upper()
+                
+                # Get UFs for selected region from dataframe
+                ufs = ['Todas'] + sorted([uf for uf in self.df[mask]['parent_uf'].unique() if pd.notna(uf)])
+                
+                self.uf_dropdown.options = ufs
+            
+            self.uf_dropdown.value = 'Todas'
+            self.mun_dropdown.options = ['Todas']
+            self.mun_dropdown.value = 'Todas'
+            
+        except Exception as e:
+            print(f"Error in region change handler: {str(e)}")
+            print(traceback.format_exc())
+
+    def _update_municipios(self, change):
+        """Handler para mudanças na UF"""
+        try:
+            if change.new == 'Todas':
+                self.mun_dropdown.options = ['Todas']
+            else:
+                # Debug print the data for this UF
+                mask = (
+                    (self.df['parent_regiao'].str.upper() == self.region_dropdown.value.upper()) &
+                    (self.df['parent_uf'].str.upper() == change.new.upper())
+                )
+                
+                # Get municipalities for selected UF from dataframe
+                municipios = ['Todas'] + sorted([m for m in self.df[mask]['parent_municipio'].unique() if pd.notna(m)])
+                
+                self.mun_dropdown.options = municipios
+            
+            self.mun_dropdown.value = 'Todas'
+            
+        except Exception as e:
+            print(f"Error in UF change handler: {str(e)}")
+            print(traceback.format_exc())
+
+    def _on_mun_change(self, change):
+        """Handler para mudanças no município"""
+        try:
+            print(f"\nMunicípio alterado para: {change.new}")
+        except Exception as e:
+            print(f"Error in municipality change handler: {str(e)}")
             print(traceback.format_exc())
 
     def _load_regions(self):
         """Load initial list of regions from reference CSV"""
         try:
-            # Debug print the unique values in parent_regiao
-            #self.debug_print("Available regions in dataframe:")
-            #self.debug_print(self.df['parent_regiao'].unique())
-            
             # Get unique regions from the main dataframe, handling NaN values
             regions = ['Todas'] + sorted([r for r in self.df['parent_regiao'].unique() if pd.notna(r)])
-            #self.debug_print(f"Filtered regions: {regions}")
             
             # Update region dropdown
             self.region_dropdown.options = regions
@@ -281,110 +408,8 @@ class LostValuesVisualizationColab:
             self.mun_dropdown.options = ['Todas']
             self.mun_dropdown.value = 'Todas'
             
-            #self.debug_print("Regions loaded successfully")
-            
         except Exception as e:
-            self.debug_print(f"Error loading regions: {str(e)}")
-            self.debug_print(traceback.format_exc())
-
-    def update_plot(self, button_clicked=None):
-        """Update plot with the current selections."""
-        try:
-            print("\nUpdating plots...")
-            
-            # Validate required selections based on hierarchy level
-            hierarchy_level = self.hierarchy_dropdown.value
-            
-            if hierarchy_level == 'SG_UF' and self.region_dropdown.value == 'Todas':
-                self.debug_print("Error: Uma região deve ser selecionada quando o nível é UF")
-                return
-                
-            elif hierarchy_level == 'NO_MUNICIPIO':
-                if self.region_dropdown.value == 'Todas':
-                    self.debug_print("Error: Uma região deve ser selecionada quando o nível é Município")
-                    return
-                if self.uf_dropdown.value == 'Todas':
-                    self.debug_print("Error: Uma UF deve ser selecionada quando o nível é Município")
-                    return
-                    
-            elif hierarchy_level == 'CO_ENTIDADE':
-                if self.region_dropdown.value == 'Todas':
-                    self.debug_print("Error: Uma região deve ser selecionada quando o nível é Escola")
-                    return
-                if self.uf_dropdown.value == 'Todas':
-                    self.debug_print("Error: Uma UF deve ser selecionada quando o nível é Escola")
-                    return
-                if self.mun_dropdown.value == 'Todas':
-                    self.debug_print("Error: Um município deve ser selecionado quando o nível é Escola")
-                    return
-            '''
-            self.debug_print("\n=== Starting Update ===")
-            self.debug_print(f"Aggregation: {self.aggregation_dropdown.value}")
-            self.debug_print(f"Hierarchy: {hierarchy_level}")
-            self.debug_print(f"Epsilon: {self.epsilon_dropdown.value}")
-            self.debug_print(f"Delta: {self.delta_dropdown.value}")
-            self.debug_print(f"Region: {self.region_dropdown.value}")
-            self.debug_print(f"UF: {self.uf_dropdown.value}")
-            self.debug_print(f"Municipality: {self.mun_dropdown.value}")
-            '''
-            # Get results only if validations pass
-            results = self.get_lost_values_results()
-            
-            if results is None or results.empty:
-                self.debug_print("No results to plot")
-                return
-            
-            #self.debug_print(f"Retrieved {len(results)} rows")
-            self.plot_lost_values(results)
-            
-            # Create and display plots
-            with self.plots_output:
-                clear_output(wait=True)
-                
-                # Create percentage plot
-                fig_percentages = go.Figure()
-                fig_percentages.add_trace(go.Bar(
-                    x=results['group_by_val1'],
-                    y=results['lost_entities'] / results['total_entities'] * 100,
-                    name='Percentual',
-                    text=[f'{p:.1f}%' for p in results['lost_entities'] / results['total_entities'] * 100],
-                    textposition='auto',
-                ))
-                fig_percentages.update_layout(
-                    title='Percentual de Valores Perdidos',
-                    xaxis_title='Valor',
-                    yaxis_title='Percentual (%)',
-                    showlegend=True,
-                    height=400,
-                    width=900,
-                    margin=dict(t=50, b=50)
-                )
-                display(fig_percentages)
-                
-                # Create totals plot
-                fig_totals = go.Figure()
-                fig_totals.add_trace(go.Bar(
-                    x=results['group_by_val1'],
-                    y=results['total_entities'],
-                    name='Total',
-                    text=[f'Total: {total}' for total in results['total_entities']],
-                    textposition='auto',
-                ))
-                fig_totals.update_layout(
-                    title='Total de Valores Perdidos',
-                    xaxis_title='Valor',
-                    yaxis_title='Total',
-                    showlegend=True,
-                    height=400,
-                    width=900,
-                    margin=dict(t=50, b=50)
-                )
-                display(fig_totals)
-            
-            print("Plots updated successfully!")
-            
-        except Exception as e:
-            print(f"Error updating plots: {str(e)}")
+            print(f"Error loading regions: {str(e)}")
             print(traceback.format_exc())
 
     def debug_print(self, *messages):
@@ -410,9 +435,7 @@ class LostValuesVisualizationColab:
                 # Region level query
                 mask = base_mask & (self.df['group_by_col1'].str.upper() == 'SG_UF')
 
-                #self.debug_print(f"Current UF selection: {self.region_dropdown.value}")
                 if self.region_dropdown.value != 'Todas':
-                    #self.debug_print("A UF has been selected!")
                     mask = mask & (self.df['parent_regiao'] == self.region_dropdown.value)
                 
                 # Add segmentation filters if selected
@@ -431,9 +454,7 @@ class LostValuesVisualizationColab:
                     (self.df['group_by_col1'].str.upper() == 'NO_MUNICIPIO')
                 )
 
-                #self.debug_print(f"Current UF selection: {self.uf_dropdown.value}")
                 if self.uf_dropdown.value != 'Todas':
-                    #self.debug_print("A UF has been selected!")
                     mask = mask & (self.df['parent_uf'] == self.uf_dropdown.value)
                     
                 filtered_df = self.df[mask]
@@ -447,9 +468,7 @@ class LostValuesVisualizationColab:
                     (self.df['group_by_col1'].str.upper() == 'CO_ENTIDADE')
                 )
 
-                #self.debug_print(f"Current Municipality selection: {self.mun_dropdown.value}")
                 if self.mun_dropdown.value != 'Todas':
-                    #self.debug_print("A Municipality has been selected!")
                     mask = mask & (self.df['parent_municipio'] == self.mun_dropdown.value)
                     
                 filtered_df = self.df[mask]
@@ -462,16 +481,14 @@ class LostValuesVisualizationColab:
                     (self.df['parent_uf'].str.upper() == self.uf_dropdown.value.upper()) &
                     (self.df['parent_municipio'].str.upper() == self.mun_dropdown.value.upper())
                 )
-                #self.debug_print(f"Current School selection: {self.mun_dropdown.value}")
                 if self.mun_dropdown.value != 'Todas':
-                    #self.debug_print("A Municipality has been selected!")
                     mask = mask & (self.df['parent_municipio'] == self.mun_dropdown.value)
                     
                 filtered_df = self.df[mask]
                 group_col = 'parent_municipio'
             
             else:
-                self.debug_print(f"Invalid hierarchy level: {hierarchy_level}")
+                print(f"Invalid hierarchy level: {hierarchy_level}")
                 return pd.DataFrame()
             
             # Common aggregation logic for all levels
@@ -489,14 +506,14 @@ class LostValuesVisualizationColab:
             results.columns = ['group_by_val1', 'total_entities', 'lost_entities', 'median_original', 'median_original_lost']
             
             # Debug information
-            self.debug_print(f"Filtered data shape: {filtered_df.shape[0]}")
-            self.debug_print(f"Results shape: {results.shape}")
+            print(f"Filtered data shape: {filtered_df.shape[0]}")
+            print(f"Results shape: {results.shape}")
             
             return results.sort_values('group_by_val1')
             
         except Exception as e:
-            self.debug_print(f"Error in get_lost_values_results: {str(e)}")
-            self.debug_print(traceback.format_exc())
+            print(f"Error in get_lost_values_results: {str(e)}")
+            print(traceback.format_exc())
             return pd.DataFrame(columns=['group_by_val1', 'lost_entities', 'total_entities', 
                                       'median_original', 'median_original_lost'])
 
@@ -506,7 +523,7 @@ class LostValuesVisualizationColab:
         """
         try:
             if results.empty:
-                self.debug_print("No data to plot")
+                print("No data to plot")
                 return
 
             hierarchy_desc = {
@@ -584,8 +601,8 @@ class LostValuesVisualizationColab:
             )
             
         except Exception as e:
-            self.debug_print(f"Error plotting: {str(e)}")
-            self.debug_print(traceback.format_exc())
+            print(f"Error plotting: {str(e)}")
+            print(traceback.format_exc())
 
     def _get_plot_title(self):
         """Helper method to generate plot title"""
@@ -610,108 +627,4 @@ class LostValuesVisualizationColab:
             if self.segment3_dropdown.value != 'Todas':
                 title_parts.append(f"e {self.segment3_dropdown.value}")
         
-        return ' - '.join(title_parts)
-
-    def _connect_observers(self):
-        """Connect widget observers."""
-        try:
-            # Connect the submit button to update_plot
-            self.submit_button.on_click(self.update_plot)
-            
-            # Update segmentation options when aggregation changes
-            self.aggregation_dropdown.observe(self._update_segmentation_options, names='value')
-            
-            # Update geographic filters
-            self.region_dropdown.observe(self._update_ufs, names='value')
-            self.uf_dropdown.observe(self._update_municipios, names='value')
-            
-            print("Observers connected successfully")
-            print("Ready to use - click 'Atualizar Gráfico' to update the visualization")
-            
-        except Exception as e:
-            print(f"Error connecting observers: {str(e)}")
-            print(traceback.format_exc())
-
-    def _update_segmentation_options(self, change):
-        """Handler for changes in aggregation selection"""
-        try:
-            new_agg = change.new
-            print(f"\nAgregação alterada para: {new_agg}")
-            
-            # Update segmentation dropdowns with new options
-            current_level = self.hierarchy_dropdown.value
-            
-            # Only update hierarchy options if current value is not in new options
-            if current_level not in self.hierarchy_levels:
-                self.hierarchy_dropdown.value = self.hierarchy_levels[0]
-            
-            self.segment2_dropdown.options = ['Todas']
-            self.segment2_dropdown.value = 'Todas'
-            
-            self.segment3_dropdown.options = ['Todas']
-            self.segment3_dropdown.value = 'Todas'
-            
-        except Exception as e:
-            self.debug_print(f"Error in aggregation change handler: {str(e)}")
-            self.debug_print(traceback.format_exc())
-
-    def _update_ufs(self, change):
-        """Handler para mudanças na região"""
-        try:
-            #self.debug_print(f"\nRegião alterada para: {change.new}")
-                
-            if change.new == 'Todas':
-                self.uf_dropdown.options = ['Todas']
-            else:
-                # Debug print the data for this region
-                mask = self.df['parent_regiao'].str.upper() == change.new.upper()
-                #self.debug_print(f"Number of rows for region {change.new}: {mask.sum()}")
-                
-                # Get UFs for selected region from dataframe
-                ufs = ['Todas'] + sorted([uf for uf in self.df[mask]['parent_uf'].unique() if pd.notna(uf)])
-                #self.debug_print(f"UFs found: {ufs}")
-                
-                self.uf_dropdown.options = ufs
-            
-            self.uf_dropdown.value = 'Todas'
-            self.mun_dropdown.options = ['Todas']
-            self.mun_dropdown.value = 'Todas'
-            
-        except Exception as e:
-            self.debug_print(f"Error in region change handler: {str(e)}")
-            self.debug_print(traceback.format_exc())
-
-    def _update_municipios(self, change):
-        """Handler para mudanças na UF"""
-        try:
-            #self.debug_print(f"\nUF alterada para: {change.new}")
-                
-            if change.new == 'Todas':
-                self.mun_dropdown.options = ['Todas']
-            else:
-                # Debug print the data for this UF
-                mask = (
-                    (self.df['parent_regiao'].str.upper() == self.region_dropdown.value.upper()) &
-                    (self.df['parent_uf'].str.upper() == change.new.upper())
-                )
-                #self.debug_print(f"Number of rows for UF {change.new}: {mask.sum()}")
-                
-                # Get municipalities for selected UF from dataframe
-                municipios = ['Todas'] + sorted([m for m in self.df[mask]['parent_municipio'].unique() if pd.notna(m)])
-                #self.debug_print(f"Municipalities found: {len(municipios)-1}")
-                
-                self.mun_dropdown.options = municipios
-            
-            self.mun_dropdown.value = 'Todas'
-            
-        except Exception as e:
-            self.debug_print(f"Error in UF change handler: {str(e)}")
-            self.debug_print(traceback.format_exc())
-
-    def _on_mun_change(self, change):
-        """Handler para mudanças no município"""
-        try:
-            self.debug_print(f"\nMunicípio alterado para: {change.new}")
-        except Exception as e:
-            self.debug_print(f"Error in municipality change handler: {str(e)}")
-            self.debug_print(traceback.format_exc()) 
+        return ' - '.join(title_parts) 

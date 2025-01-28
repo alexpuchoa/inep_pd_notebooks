@@ -33,6 +33,7 @@ class LostValuesVisualizationColab:
             )
             logger.info("Starting initialization...")
             
+            '''
             # Enable widget display in Colab
             logger.info("Enabling Colab widget display...")
             display(HTML("""
@@ -47,7 +48,7 @@ class LostValuesVisualizationColab:
                 </script>
             """))
             logger.info("Colab widget display enabled")
-            
+            '''
             # Initialize debug output
             logger.info("Creating debug output widget...")
             self.debug_output = widgets.Output(

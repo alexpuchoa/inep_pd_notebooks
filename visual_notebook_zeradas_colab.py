@@ -46,18 +46,6 @@ class LostValuesVisualizationColab:
             """))
             logger.info("Colab widget display enabled")
             '''
-            # Initialize debug output
-            self.debug_output = widgets.Output(
-                layout=widgets.Layout(
-                    height='200px',
-                    width='100%',
-                    border='2px solid #ccc',
-                    padding='10px',
-                    margin='10px 0',
-                    overflow_y='auto'
-                )
-            )
-            
             with self.log_output:
                 print("Loading data...")
                 print(f"Reading CSV from: {data_path}")

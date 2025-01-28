@@ -26,50 +26,15 @@ class LostValuesVisualizationColab:
     def __init__(self, data_path):
         """Initialize the visualization interface with CSV data."""
         try:
-            # Create and display logging output
-            self.log_output = widgets.Output(
-                layout=widgets.Layout(
-                    border='1px solid #ddd',
-                    padding='10px',
-                    margin='10px 0'
-                )
-            )
-            display(self.log_output)
+            print("Carregando App")
             
-            # Create debug output widget
-            self.debug_output = widgets.Output(
-                layout=widgets.Layout(
-                    height='200px',
-                    width='100%',
-                    border='1px solid #ddd',
-                    padding='10px',
-                    margin='10px 0',
-                    overflow_y='auto'
-                )
-            )
-            
-            with self.log_output:
-                print("Loading data...")
-                print(f"Reading CSV from: {data_path}")
-            
-            # Load data
+            # Load data first
             self.data_path = Path(data_path)
             csv_path = self.data_path / "dp_results_stats_bq.csv"
             queries_file = self.data_path / "queries_formatadas_bq.csv"
             
-            # Define dtypes for all columns
-            dtypes = {
-                'epsilon': 'float64',
-                'delta': 'float64',
-                'dp_avg': 'float64',
-                'original_value': 'float64',
-                'aggregated_data': 'str',
-                'group_by': 'str',
-                'NO_REGIAO': 'str',
-                'SG_UF': 'str',
-                'NO_MUNICIPIO': 'str',
-                'CO_ENTIDADE': 'str'
-            }
+            print("Loading data...")
+            print(f"Reading CSV from: {data_path}")
             
             # Load data in chunks
             chunks = []
@@ -77,84 +42,68 @@ class LostValuesVisualizationColab:
             
             for i, chunk in enumerate(pd.read_csv(
                 csv_path,
-                dtype=dtypes,
+                dtype={
+                    'epsilon': 'float64',
+                    'delta': 'float64',
+                    'dp_avg': 'float64',
+                    'original_value': 'float64'
+                },
                 sep=';',
                 encoding='latin1',
                 low_memory=False,
                 chunksize=chunk_size
             )):
-                with self.log_output:
-                    print(f"Chunk {i+1} loaded...")
+                print(f"Chunk {i+1} loaded...")
                 chunks.append(chunk)
             
-            with self.log_output:
-                print("Concatenating chunks...")
+            print("Concatenating chunks...")
             self.df = pd.concat(chunks, ignore_index=True)
-            with self.log_output:
-                print(f"Data loaded successfully. Shape: {self.df.shape}")
+            print(f"Data loaded successfully. Shape: {self.df.shape}")
             
             # Load queries configuration
-            self.queries_config = pd.read_csv(
-                queries_file,
-                sep=';',
-                dtype={'aggregated_data': 'str', 'group_by': 'str'}
-            )
+            self.queries_config = pd.read_csv(queries_file, sep=';')
+            print(f"Queries loaded. Shape: {self.queries_config.shape}")
             
-            with self.log_output:
-                print(f"Queries loaded. Shape: {self.queries_config.shape}")
-            
-            # Define ordered lists
+            # Setup basic configurations
             self.hierarchy_levels = ['NO_REGIAO', 'SG_UF', 'NO_MUNICIPIO', 'CO_ENTIDADE']
             self.ordered_aggregations = ['QT_ALUNOS', 'MEDIA_NOTA', 'SOMA_NOTAS']
-            
-            # Extract unique aggregated_data values
             self.aggregation_options = [agg for agg in self.ordered_aggregations 
                                       if agg in self.df['aggregated_data'].str.upper().unique()]
             
-            # Create mapping of segmentation options
-            self.segmentation_map = {}
-            for agg in self.aggregation_options:
-                agg_queries = self.queries_config[self.queries_config['aggregated_data'].str.upper() == agg]
-                group_by_values = agg_queries['group_by'].dropna().unique()
-                
-                seg2_options = set()
-                seg3_options = set()
-                
-                for group_by in group_by_values:
-                    if pd.isna(group_by):
-                        continue
-                    cols = [col.strip() for col in group_by.split(',')]
-                    if len(cols) > 1:
-                        seg2_options.add(cols[1])
-                    if len(cols) > 2:
-                        seg3_options.add(cols[2])
-                
-                self.segmentation_map[agg] = {
-                    'seg1': self.hierarchy_levels,
-                    'seg2': sorted(seg2_options | {'Todas'}),
-                    'seg3': sorted(seg3_options | {'Todas'})
-                }
-            
             # Create widgets
+            print("\nCreating widgets:")
             self._create_widgets()
             
             # Initialize geographic filters
             self._load_regions()
             
-            # Create and display container
-            self.container = self.display_chart()
-            display(self.container)
+            # Create main interface
+            interface = widgets.VBox([
+                widgets.HTML("<h2>Visualização de Valores Perdidos</h2>"),
+                widgets.HBox([self.aggregation_dropdown, self.hierarchy_dropdown]),
+                widgets.HBox([self.segment2_dropdown, self.segment3_dropdown]),
+                widgets.HBox([self.epsilon_dropdown, self.delta_dropdown]),
+                widgets.HBox([self.region_dropdown, self.uf_dropdown, self.mun_dropdown]),
+                self.submit_button
+            ])
+            
+            # Display interface
+            print("\nDisplaying interface...")
+            display(interface)
+            
+            # Create and display plots area
+            self.plots_output = widgets.Output()
+            display(widgets.HTML("<h3>Gráficos:</h3>"))
+            display(self.plots_output)
             
             # Connect observers
             self._connect_observers()
             
-            with self.log_output:
-                print("Initialization complete!")
+            print("Initialization complete!")
             
         except Exception as e:
-            with self.log_output:
-                print(f"Error initializing visualization: {str(e)}")
-                print(traceback.format_exc())
+            print(f"Error in initialization: {str(e)}")
+            print(traceback.format_exc())
 
     def _create_widgets(self):
         """
@@ -177,8 +126,8 @@ class LostValuesVisualizationColab:
             
             # Hierarchical level dropdown (first segmentation)
             self.hierarchy_dropdown = widgets.Dropdown(
-                options=self.segmentation_map[self.aggregation_options[0]]['seg1'],
-                value=self.segmentation_map[self.aggregation_options[0]]['seg1'][0],
+                options=self.hierarchy_levels,
+                value=self.hierarchy_levels[0],
                 description='Nível:'
             )
             
@@ -187,13 +136,13 @@ class LostValuesVisualizationColab:
             
             # Second and third segmentation dropdowns
             self.segment2_dropdown = widgets.Dropdown(
-                options=self.segmentation_map[self.aggregation_options[0]]['seg2'],
+                options=['Todas'],
                 value='Todas',
                 description='Segm. 2:'
             )
             
             self.segment3_dropdown = widgets.Dropdown(
-                options=self.segmentation_map[self.aggregation_options[0]]['seg3'],
+                options=['Todas'],
                 value='Todas',
                 description='Segm. 3:'
             )
@@ -756,7 +705,6 @@ class LostValuesVisualizationColab:
             new_agg = change.new
             with self.debug_output:
                 print(f"\nAgregação alterada para: {new_agg}")
-                print(f"Opções de segmentação disponíveis: {self.segmentation_map[new_agg]}")
             
             # Update segmentation dropdowns with new options
             current_level = self.hierarchy_dropdown.value
@@ -765,10 +713,10 @@ class LostValuesVisualizationColab:
             if current_level not in self.hierarchy_levels:
                 self.hierarchy_dropdown.value = self.hierarchy_levels[0]
             
-            self.segment2_dropdown.options = self.segmentation_map[new_agg]['seg2']
+            self.segment2_dropdown.options = ['Todas']
             self.segment2_dropdown.value = 'Todas'
             
-            self.segment3_dropdown.options = self.segmentation_map[new_agg]['seg3']
+            self.segment3_dropdown.options = ['Todas']
             self.segment3_dropdown.value = 'Todas'
             
         except Exception as e:

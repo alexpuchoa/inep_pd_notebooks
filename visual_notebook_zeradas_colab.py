@@ -262,7 +262,7 @@ class LostValuesVisualizationColab:
             with self.log_output:
                 print("- Creating figure widgets...")
             
-            # Create output widgets for plots
+            # Create output widget for plots
             self.plots_output = widgets.Output(
                 layout=widgets.Layout(
                     width='100%',
@@ -288,6 +288,11 @@ class LostValuesVisualizationColab:
                     showlegend=True
                 )
             )
+            
+            # Explicitly display the figures in the output widget
+            with self.plots_output:
+                display(self.fig_percentages)
+                display(self.fig_totals)
             
             # Create VBox with plots output
             self.lost_values_fig = widgets.VBox([

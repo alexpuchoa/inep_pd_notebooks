@@ -1,7 +1,11 @@
 import ipywidgets as widgets
 from IPython.display import display, clear_output
 import plotly.graph_objects as go
+import plotly.io as pio
 import numpy as np
+
+# Set the default renderer for Plotly to work in Colab
+pio.renderers.default = 'colab'
 
 class WidgetTest:
     """Test different widget and display combinations in Colab."""
@@ -60,13 +64,10 @@ class WidgetTest:
             )
         )
         
-        # Create container for plot test
-        plot_container = widgets.VBox([
-            widgets.HTML("<h3>Test 4: Plotly Plot</h3>"),
-            self.button4,
-            self.plot_output
-        ])
-        display(plot_container)
+        # Display components individually
+        display(widgets.HTML("<h3>Test 4: Plotly Plot</h3>"))
+        display(self.button4)
+        display(self.plot_output)
         
         # Connect observers
         self.button1.on_click(self.update_test1)
@@ -97,10 +98,11 @@ class WidgetTest:
             fig.update_layout(
                 title='Sample Plot (Initial)',
                 height=400,
-                width=600
+                width=800,
+                showlegend=True
             )
             
-            display(fig)
+            fig.show()  # Using show() instead of display()
             print("Initial plot created")  # Debug message
     
     def update_test1(self, b):
@@ -134,10 +136,11 @@ class WidgetTest:
             fig.update_layout(
                 title='Sample Plot (Updated)',
                 height=400,
-                width=600
+                width=800,
+                showlegend=True
             )
             
-            display(fig)
+            fig.show()  # Using show() instead of display()
             print("Plot updated!")  # Debug message
 
 # Create and display test app

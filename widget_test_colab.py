@@ -49,14 +49,24 @@ class WidgetTest:
             self.output3
         ]))
         
-        # Test 4: Plotly figure with Output
+        # Test 4: Plotly figure with Output - MODIFIED VERSION
         print("\nTest 4: Plotly figure in Output widget")
         self.button4 = widgets.Button(description='Update Plot')
-        self.plot_output = widgets.Output()
+        self.plot_output = widgets.Output(
+            layout=widgets.Layout(
+                height='500px',  # Fixed height
+                width='100%',
+                border='1px solid #ddd'
+            )
+        )
         
-        display(widgets.HTML("<h3>Test 4: Plotly Plot</h3>"))
-        display(self.button4)
-        display(self.plot_output)
+        # Create container for plot test
+        plot_container = widgets.VBox([
+            widgets.HTML("<h3>Test 4: Plotly Plot</h3>"),
+            self.button4,
+            self.plot_output
+        ])
+        display(plot_container)
         
         # Connect observers
         self.button1.on_click(self.update_test1)
@@ -65,7 +75,33 @@ class WidgetTest:
         self.button4.on_click(self.update_plot)
         
         # Initial plot
-        self.update_plot(None)
+        self.create_initial_plot()
+    
+    def create_initial_plot(self):
+        """Create the initial plot."""
+        with self.plot_output:
+            clear_output(wait=True)
+            
+            # Create sample data
+            x = np.linspace(0, 10, 100)
+            y = np.sin(x)
+            
+            # Create figure
+            fig = go.Figure()
+            fig.add_trace(go.Scatter(
+                x=x, 
+                y=y, 
+                mode='lines',
+                name='Initial Plot'
+            ))
+            fig.update_layout(
+                title='Sample Plot (Initial)',
+                height=400,
+                width=600
+            )
+            
+            display(fig)
+            print("Initial plot created")  # Debug message
     
     def update_test1(self, b):
         print(f"Test 1 selected: {self.dropdown1.value}")
@@ -79,23 +115,30 @@ class WidgetTest:
             print(f"Test 3 selected: {self.dropdown3.value}")
     
     def update_plot(self, b):
+        """Update the plot with new data."""
         with self.plot_output:
             clear_output(wait=True)
             
-            # Create sample data
+            # Create sample data with different function
             x = np.linspace(0, 10, 100)
-            y = np.sin(x)
+            y = np.cos(x)  # Changed to cos for visible difference
             
             # Create figure
             fig = go.Figure()
-            fig.add_trace(go.Scatter(x=x, y=y, mode='lines'))
+            fig.add_trace(go.Scatter(
+                x=x, 
+                y=y, 
+                mode='lines',
+                name='Updated Plot'
+            ))
             fig.update_layout(
-                title='Sample Plot',
+                title='Sample Plot (Updated)',
                 height=400,
                 width=600
             )
             
             display(fig)
+            print("Plot updated!")  # Debug message
 
 # Create and display test app
 test_app = WidgetTest() 

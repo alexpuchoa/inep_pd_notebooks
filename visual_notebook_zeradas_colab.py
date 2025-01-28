@@ -72,7 +72,7 @@ class LostValuesVisualizationColab:
             
             # Load queries configuration
             #queries_file = Path(data_path).parent / "queries_formatadas_bq.csv"
-            self.debug_print(f"Looking for queries file at: {queries_file}")
+            self.debug_print(f"Looking for queries file at: {queries_path}")
             self.queries_config = pd.read_csv(queries_path, sep=';')
             
             # Define ordered lists

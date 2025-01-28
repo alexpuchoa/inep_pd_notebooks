@@ -255,10 +255,13 @@ class LostValuesVisualizationColab:
                 # Group by parent_regiao and calculate statistics
                 df_plot = filtered_df.groupby('group_by_val1').agg({
                     # Count all rows in group
-                    'group_by_val1': ('total_entities', 'count'),
+                    'group_by_val1': 'count',  # Simple count for total entities
                     # Count rows where dp_avg is 0 or NULL or lost > 0
-                    'dp_avg': ('lost_entities', lambda x: ((x == 0.0) | x.isna() | (filtered_df['lost'] > 0)).sum())
+                    'dp_avg': lambda x: ((x == 0.0) | x.isna() | (filtered_df['lost'] > 0)).sum()
                 }).reset_index()
+
+                # Rename columns to more meaningful names
+                df_plot.columns = ['group_by_val1', 'total_entities', 'lost_entities']
 
                 xaxis_label = 'UFs por Região'
                 xaxis_groupby = 'group_by_val1'

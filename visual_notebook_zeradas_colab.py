@@ -353,7 +353,9 @@ class LostValuesVisualizationColab:
             # Display plots
             with self.plots_output:
                 clear_output(wait=True)
+                # Create both plots
                 fig_percentages.show()
+                print("\n")  # Add some space between plots
                 fig_totals.show()
                 print("Plots updated successfully!")
             

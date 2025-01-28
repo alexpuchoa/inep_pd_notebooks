@@ -30,7 +30,19 @@ class LostValuesVisualizationColab:
             self.log_output = widgets.Output()
             display(self.log_output)
             
-            '''
+            # Create debug output widget
+            self.debug_output = widgets.Output(
+                layout=widgets.Layout(
+                    height='200px',
+                    width='100%',
+                    border='1px solid #ddd',
+                    padding='10px',
+                    margin='10px 0',
+                    overflow_y='auto'
+                )
+            )
+            
+            
             # Enable widget display in Colab
             logger.info("Enabling Colab widget display...")
             display(HTML("""
@@ -45,7 +57,7 @@ class LostValuesVisualizationColab:
                 </script>
             """))
             logger.info("Colab widget display enabled")
-            '''
+            
             with self.log_output:
                 print("Loading data...")
                 print(f"Reading CSV from: {data_path}")
@@ -53,7 +65,7 @@ class LostValuesVisualizationColab:
             self.data_path = Path(data_path)
             csv_path = self.data_path / "dp_results_stats_bq.csv"
             queries_file = self.data_path / "queries_formatadas_bq.csv"
-
+            '''
             # Load data using pandas
             self.df = pd.read_csv(csv_path, 
                                 dtype={
@@ -62,6 +74,8 @@ class LostValuesVisualizationColab:
                                     'dp_avg': 'float64',
                                     'original_value': 'float64'
                                 }, sep=';', encoding='latin1', low_memory=False)
+            '''
+            self.df = self.load_csv_in_chunks(csv_path)
             
             with self.log_output:
                 print(f"Data loaded. Shape: {self.df.shape}")

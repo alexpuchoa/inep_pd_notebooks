@@ -236,6 +236,9 @@ class LostValuesVisualizationColab:
             print(f"Filtering with: agg={aggregation}, eps={epsilon}, delta={delta}")
             print(f"Geographic filters: region={region}, uf={uf}, mun={mun}")
             
+            # Debug print column names
+            print("Available columns:", self.df.columns.tolist())
+            
             # Filter data based on selections
             filtered_df = self.df[
                 (self.df['aggregated_data'].str.upper() == aggregation.upper()) &
@@ -245,11 +248,11 @@ class LostValuesVisualizationColab:
             
             # Apply geographic filters if selected
             if region != 'Todas':
-                filtered_df = filtered_df[filtered_df['NO_REGIAO'] == region]
+                filtered_df = filtered_df[filtered_df['parent_regiao'] == region]
             if uf != 'Todas':
-                filtered_df = filtered_df[filtered_df['SG_UF'] == uf]
+                filtered_df = filtered_df[filtered_df['parent_uf'] == uf]
             if mun != 'Todas':
-                filtered_df = filtered_df[filtered_df['NO_MUNICIPIO'] == mun]
+                filtered_df = filtered_df[filtered_df['parent_municipio'] == mun]
             
             print(f"Filtered data shape: {filtered_df.shape}")
             

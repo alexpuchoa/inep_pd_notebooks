@@ -77,25 +77,42 @@ class LostValuesVisualizationColab:
             # Initialize geographic filters
             self._load_regions()
             
-            # Create main interface
-            interface = widgets.VBox([
-                widgets.HTML("<h2>Visualização de Valores Perdidos</h2>"),
-                widgets.HBox([self.aggregation_dropdown, self.hierarchy_dropdown]),
-                widgets.HBox([self.segment2_dropdown, self.segment3_dropdown]),
-                widgets.HBox([self.epsilon_dropdown, self.delta_dropdown]),
-                widgets.HBox([self.region_dropdown, self.uf_dropdown, self.mun_dropdown]),
-                self.submit_button,
-                self.plots_output  # Add plots output here
-            ], layout=widgets.Layout(
-                padding='20px',
-                width='100%',
-                border='1px solid #ddd',
-                margin='10px'
-            ))
+            # Display each component individually
+            print("\nDisplaying interface components:")
             
-            # Display interface
-            print("\nDisplaying interface...")
-            display(interface)
+            # Title
+            display(widgets.HTML("<h2>Visualização de Valores Perdidos</h2>"))
+            
+            # Query controls
+            display(widgets.VBox([
+                widgets.HTML("<b>Configuração da Query</b>"),
+                widgets.HBox([self.aggregation_dropdown, self.hierarchy_dropdown])
+            ]))
+            
+            # Segmentation controls
+            display(widgets.VBox([
+                widgets.HTML("<b>Segmentações</b>"),
+                widgets.HBox([self.segment2_dropdown, self.segment3_dropdown])
+            ]))
+            
+            # DP Parameters
+            display(widgets.VBox([
+                widgets.HTML("<b>Parâmetros DP</b>"),
+                widgets.HBox([self.epsilon_dropdown, self.delta_dropdown])
+            ]))
+            
+            # Geographic filters
+            display(widgets.VBox([
+                widgets.HTML("<b>Filtros Geográficos</b>"),
+                widgets.HBox([self.region_dropdown, self.uf_dropdown, self.mun_dropdown])
+            ]))
+            
+            # Submit button
+            display(self.submit_button)
+            
+            # Plots area
+            display(widgets.HTML("<h3>Gráficos:</h3>"))
+            display(self.plots_output)
             
             # Connect observers
             self._connect_observers()

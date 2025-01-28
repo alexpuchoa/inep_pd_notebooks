@@ -314,50 +314,58 @@ class LostValuesVisualizationColab:
             )
             df_plot['total_lost'] = df_plot['lost_entities']
             
-            # Create percentage plot
-            fig_percentages = go.Figure()
-            fig_percentages.add_trace(go.Bar(
+            # Create single figure with secondary y-axis
+            fig = go.Figure()
+
+            # Add bar plot for totals (primary y-axis)
+            fig.add_trace(go.Bar(
+                x=df_plot['group_by_val1'],
+                y=df_plot['lost_entities'],  # Changed from total_lost
+                name='Total Perdidos',
+                text=df_plot['lost_entities'].round(0),
+                textposition='auto',
+            ))
+
+            # Add line plot for percentages (secondary y-axis)
+            fig.add_trace(go.Scatter(
                 x=df_plot['group_by_val1'],
                 y=df_plot['percentage'],
                 name='Percentual',
                 text=df_plot['percentage'].round(2),
-                textposition='auto',
+                textposition='top center',
+                yaxis='y2',
+                mode='lines+markers',
+                line=dict(color='red')  # Make the line more visible
             ))
-            fig_percentages.update_layout(
-                title='Percentual de Valores Perdidos',
-                xaxis_title='Entidades',
-                yaxis_title='Percentual de entidades perdidas (%)',
+
+            # Update layout with secondary y-axis
+            fig.update_layout(
+                title=f'Valores Perdidos por {hierarchy}',
+                xaxis_title=hierarchy,
+                yaxis_title='Total de Entidades Perdidas',
+                yaxis2=dict(
+                    title='Percentual (%)',
+                    overlaying='y',
+                    side='right',
+                    rangemode='tozero'
+                ),
                 showlegend=True,
-                height=400,
-                width=900
+                height=600,
+                width=1000,
+                margin=dict(l=50, r=50, t=50, b=50),
+                legend=dict(
+                    yanchor="top",
+                    y=0.99,
+                    xanchor="left",
+                    x=0.01
+                )
             )
-            
-            # Create totals plot
-            fig_totals = go.Figure()
-            fig_totals.add_trace(go.Bar(
-                x=df_plot['group_by_val1'],
-                y=df_plot['total_lost'],
-                name='Total',
-                text=df_plot['total_lost'].round(0),
-                textposition='auto',
-            ))
-            fig_totals.update_layout(
-                title='Total de Valores Perdidos',
-                xaxis_title='Entidades',
-                yaxis_title='Total de entidades',
-                showlegend=True,
-                height=400,
-                width=900
-            )
-            
-            # Display plots
+
+            # Display the combined plot
             with self.plots_output:
                 clear_output(wait=True)
-                # Create both plots
-                fig_percentages.show()
-                print("\n")  # Add some space between plots
-                fig_totals.show()
-                print("Plots updated successfully!")
+                fig.show()
+                print("Plot updated successfully!")
             
         except Exception as e:
             print(f"Error updating plots: {str(e)}")

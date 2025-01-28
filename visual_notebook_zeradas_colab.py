@@ -63,58 +63,9 @@ class LostValuesVisualizationColab:
             self.aggregation_options = [agg for agg in self.ordered_aggregations 
                                       if agg in self.df['aggregated_data'].str.upper().unique()]
             
-            # Create widgets
-            print("\nCreating widgets:")
+            # Create widgets and display interface
             self._create_widgets()
-            
-            # Initialize geographic filters
-            self._load_regions()
-            
-            # Display interface components individually
-            print("\nDisplaying interface components:")
-            
-            # Title and description
-            display(widgets.HTML("<h2>Visualização de Valores Perdidos</h2>"))
-            display(widgets.HTML(
-                "<h4>NIVEL - Como os dados zerados do nivel hirárquico logo abaixo serão agregados.</h4>"
-            ))
-            
-            # Query controls
-            display(widgets.VBox([
-                widgets.HTML("<b>Configuração da Query</b>"),
-                widgets.HBox([self.aggregation_dropdown, self.hierarchy_dropdown])
-            ]))
-            
-            # Segmentation controls
-            display(widgets.VBox([
-                widgets.HTML("<b>Segmentações</b>"),
-                widgets.HBox([self.segment2_dropdown, self.segment3_dropdown])
-            ]))
-            
-            # DP Parameters
-            display(widgets.VBox([
-                widgets.HTML("<b>Parâmetros DP</b>"),
-                widgets.HBox([self.epsilon_dropdown, self.delta_dropdown])
-            ]))
-            
-            # Geographic filters
-            display(widgets.VBox([
-                widgets.HTML("<b>Filtros Geográficos</b>"),
-                widgets.HBox([self.region_dropdown, self.uf_dropdown, self.mun_dropdown])
-            ]))
-            
-            # Submit button
-            display(self.submit_button)
-            
-            # Plots area
-            display(widgets.HTML("<h3>Gráficos:</h3>"))
-            display(self.plots_output)
-            
-            # Connect observers
-            self._connect_observers()
-            
-            # Create initial plots
-            self.update_plot(None)
+            self.display_interface()
             
             print("Initialization complete!")
             
@@ -204,6 +155,67 @@ class LostValuesVisualizationColab:
             print(f"Error creating widgets: {str(e)}")
             print(traceback.format_exc())
 
+    def display_interface(self):
+        """Display the interface components."""
+        try:
+            print("\nDisplaying interface components:")
+            
+            # Create containers for each section
+            title_section = widgets.VBox([
+                widgets.HTML("<h2>Visualização de Valores Perdidos</h2>"),
+                widgets.HTML("<p>NIVEL - Como os dados zerados do nivel hierárquico logo abaixo serão agregados.</p>")
+            ])
+            
+            query_section = widgets.VBox([
+                widgets.HTML("<b>Configuração da Query</b>"),
+                widgets.HBox([self.aggregation_dropdown, self.hierarchy_dropdown])
+            ])
+            
+            segmentation_section = widgets.VBox([
+                widgets.HTML("<b>Segmentações</b>"),
+                widgets.HBox([self.segment2_dropdown, self.segment3_dropdown])
+            ])
+            
+            dp_params_section = widgets.VBox([
+                widgets.HTML("<b>Parâmetros DP</b>"),
+                widgets.HBox([self.epsilon_dropdown, self.delta_dropdown])
+            ])
+            
+            geo_filters_section = widgets.VBox([
+                widgets.HTML("<b>Filtros Geográficos</b>"),
+                widgets.HBox([self.region_dropdown, self.uf_dropdown, self.mun_dropdown])
+            ])
+            
+            # Create main container
+            main_container = widgets.VBox([
+                title_section,
+                query_section,
+                segmentation_section,
+                dp_params_section,
+                geo_filters_section,
+                self.submit_button,
+                widgets.HTML("<h3>Gráficos:</h3>"),
+                self.plots_output
+            ], layout=widgets.Layout(
+                padding='20px',
+                width='100%',
+                border='1px solid #ddd',
+                margin='10px'
+            ))
+            
+            # Display the main container
+            display(main_container)
+            
+            # Initialize geographic filters
+            self._load_regions()
+            
+            # Connect observers
+            self._connect_observers()
+            
+        except Exception as e:
+            print(f"Error displaying interface: {str(e)}")
+            print(traceback.format_exc())
+
     def update_plot(self, button_clicked=None):
         """Update plot with the current selections."""
         try:
@@ -220,9 +232,15 @@ class LostValuesVisualizationColab:
             uf = self.uf_dropdown.value
             mun = self.mun_dropdown.value
             
+            # Debug print
+            print(f"Filtering with: agg={aggregation}, eps={epsilon}, delta={delta}")
+            print(f"Geographic filters: region={region}, uf={uf}, mun={mun}")
+            
             # Filter data based on selections
             filtered_df = self.df[
-                (self.df['aggregated_data'].str.upper() == aggregation)
+                (self.df['aggregated_data'].str.upper() == aggregation.upper()) &
+                (self.df['epsilon'] == epsilon) &
+                (self.df['delta'] == delta)
             ]
             
             # Apply geographic filters if selected
@@ -232,6 +250,8 @@ class LostValuesVisualizationColab:
                 filtered_df = filtered_df[filtered_df['SG_UF'] == uf]
             if mun != 'Todas':
                 filtered_df = filtered_df[filtered_df['NO_MUNICIPIO'] == mun]
+            
+            print(f"Filtered data shape: {filtered_df.shape}")
             
             # Group by epsilon and calculate statistics
             df_plot = filtered_df.groupby('epsilon').agg({

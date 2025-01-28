@@ -181,12 +181,19 @@ class LostValuesVisualizationColab:
         Cria os widgets com nova estrutura baseada em agregações e segmentações.
         """
         try:
+            with self.log_output:
+                print("\nCreating widgets:")
+                print("- Creating aggregation dropdown...")
+            
             # Aggregation type dropdown
             self.aggregation_dropdown = widgets.Dropdown(
                 options=self.aggregation_options,
                 value=self.aggregation_options[0],
                 description='Agregação:'
             )
+            
+            with self.log_output:
+                print("- Creating hierarchy dropdown...")
             
             # Hierarchical level dropdown (first segmentation)
             self.hierarchy_dropdown = widgets.Dropdown(
@@ -195,19 +202,24 @@ class LostValuesVisualizationColab:
                 description='Nível:'
             )
             
-            # Second segmentation dropdown
+            with self.log_output:
+                print("- Creating segmentation dropdowns...")
+            
+            # Second and third segmentation dropdowns
             self.segment2_dropdown = widgets.Dropdown(
                 options=self.segmentation_map[self.aggregation_options[0]]['seg2'],
                 value='Todas',
                 description='Segm. 2:'
             )
             
-            # Third segmentation dropdown
             self.segment3_dropdown = widgets.Dropdown(
                 options=self.segmentation_map[self.aggregation_options[0]]['seg3'],
                 value='Todas',
                 description='Segm. 3:'
             )
+            
+            with self.log_output:
+                print("- Creating geographic filters...")
             
             # Geographic filters
             self.region_dropdown = widgets.Dropdown(
@@ -228,6 +240,9 @@ class LostValuesVisualizationColab:
                 description='Município:'
             )
             
+            with self.log_output:
+                print("- Creating DP parameters...")
+            
             # DP parameters
             self.epsilon_dropdown = widgets.Dropdown(
                 options=[1.0, 5.0, 10.0],
@@ -241,12 +256,18 @@ class LostValuesVisualizationColab:
                 description='Delta:'
             )
             
+            with self.log_output:
+                print("- Creating submit button...")
+            
             # Submit button
             self.submit_button = widgets.Button(
                 description='Atualizar Gráfico',
                 button_style='primary',
                 tooltip='Clique para atualizar o gráfico com as seleções atuais'
             )
+            
+            with self.log_output:
+                print("- Creating figure widgets...")
             
             # Initialize empty figures for the VBox
             self.fig_percentages = go.FigureWidget()
@@ -258,28 +279,37 @@ class LostValuesVisualizationColab:
                 self.fig_totals
             ])
             
+            with self.log_output:
+                print("All widgets created successfully!")
+            
         except Exception as e:
-            print(f"Error creating widgets: {str(e)}")
-            print(traceback.format_exc())
+            with self.log_output:
+                print(f"Error creating widgets: {str(e)}")
+                print(traceback.format_exc())
 
     def display_chart(self):
         """
-        Display the visualization interface with improved layout
+        Display the visualization interface with improved layout for Colab
         """
         try:
-            # Force clear any previous output
-            #clear_output(wait=True)
+            with self.log_output:
+                print("\nBuilding display:")
+                print("- Creating title...")
             
             # Title
-            
             title = widgets.HTML(
-                
                 "<h2 style='text-align: center; margin: 20px 0; color: #2c3e50; font-family: Arial, sans-serif; padding: 15px; border-bottom: 2px solid #3498db;'>Visualização de Valores Perdidos</h2>"
             )
+            
+            with self.log_output:
+                print("- Creating notes...")
 
             notas = widgets.HTML(
                 "<h4 style='text-align: left; margin: 15px 0; color: #2c3e50; font-family: Arial, sans-serif;'>NIVEL - Como os dados zerados do nivel hirárquico logo abaixo serão agregados. Ex.: Nivel = SG_UF, dados de MUNICIPIOS zerados são agregados por UF.<br>SEGMENTAÇÕES 2 e 3 - Somente disponível para NIVEL = NO_REGIAO.<br>FILTRO GEOGRÁFICO - Seleção obrigatória se NIVEL <> NO_REGIAO. Se NIVEL = SG_UF, uma Região deve ser selecionada. Se NIVEL = CO_ENTIDADE, um Município deve ser selecionado.</br></h4>"
             )
+            
+            with self.log_output:
+                print("- Creating controls sections...")
             
             # Controls in sections
             controls_title = widgets.HTML("<h3 style='color: #2c3e50; font-family: Arial, sans-serif; margin: 15px 0;'>Controles</h3>")
@@ -317,8 +347,11 @@ class LostValuesVisualizationColab:
                 ])
             ])
             
+            with self.log_output:
+                print("- Creating main container...")
+            
             # Main container
-            self.container = widgets.VBox([
+            container = widgets.VBox([
                 title,
                 notas,
                 controls_title,
@@ -337,12 +370,15 @@ class LostValuesVisualizationColab:
                 margin='10px'
             ))
             
-            # Display the interface
-            display(self.container)
+            with self.log_output:
+                print("Display container built successfully!")
+            
+            return container
             
         except Exception as e:
-            print(f"Error displaying interface: {str(e)}")
-            print(traceback.format_exc())
+            with self.log_output:
+                print(f"Error displaying interface: {str(e)}")
+                print(traceback.format_exc())
 
     def _load_regions(self):
         """Load initial list of regions from reference CSV"""

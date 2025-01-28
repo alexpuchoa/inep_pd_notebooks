@@ -84,17 +84,18 @@ class LostValuesVisualizationColab:
                 widgets.HBox([self.segment2_dropdown, self.segment3_dropdown]),
                 widgets.HBox([self.epsilon_dropdown, self.delta_dropdown]),
                 widgets.HBox([self.region_dropdown, self.uf_dropdown, self.mun_dropdown]),
-                self.submit_button
-            ])
+                self.submit_button,
+                self.plots_output  # Add plots output here
+            ], layout=widgets.Layout(
+                padding='20px',
+                width='100%',
+                border='1px solid #ddd',
+                margin='10px'
+            ))
             
             # Display interface
             print("\nDisplaying interface...")
             display(interface)
-            
-            # Create and display plots area
-            self.plots_output = widgets.Output()
-            display(widgets.HTML("<h3>Gráficos:</h3>"))
-            display(self.plots_output)
             
             # Connect observers
             self._connect_observers()
@@ -184,37 +185,11 @@ class LostValuesVisualizationColab:
             self.plots_output = widgets.Output(
                 layout=widgets.Layout(
                     width='100%',
-                    height='800px',  # Explicit height for both plots
+                    height='800px',
                     border='1px solid #ddd',
                     margin='20px 0'
                 )
             )
-            
-            # Initialize empty figures
-            self.fig_percentages = go.Figure(
-                layout=go.Layout(
-                    height=400,
-                    width=900,
-                    title='Percentual de Valores Perdidos',
-                    showlegend=True,
-                    margin=dict(t=50, b=50)  # Add margins
-                )
-            )
-            
-            self.fig_totals = go.Figure(
-                layout=go.Layout(
-                    height=400,
-                    width=900,
-                    title='Total de Valores Perdidos',
-                    showlegend=True,
-                    margin=dict(t=50, b=50)  # Add margins
-                )
-            )
-            
-            # Display initial empty plots
-            with self.plots_output:
-                display(self.fig_percentages)
-                display(self.fig_totals)
             
             print("All widgets created successfully!")
             
@@ -345,47 +320,48 @@ class LostValuesVisualizationColab:
             #self.debug_print(f"Retrieved {len(results)} rows")
             self.plot_lost_values(results)
             
-            # Create new figures
-            fig_percentages = go.Figure()
-            fig_percentages.add_trace(go.Bar(
-                x=results['group_by_val1'],
-                y=results['lost_entities'] / results['total_entities'] * 100,
-                name='Percentual',
-                text=[f'{p:.1f}%' for p in results['lost_entities'] / results['total_entities'] * 100],
-                textposition='auto',
-            ))
-            fig_percentages.update_layout(
-                title='Percentual de Valores Perdidos',
-                xaxis_title='Valor',
-                yaxis_title='Percentual (%)',
-                showlegend=True,
-                height=400,
-                width=900,
-                margin=dict(t=50, b=50)
-            )
-            
-            fig_totals = go.Figure()
-            fig_totals.add_trace(go.Bar(
-                x=results['group_by_val1'],
-                y=results['total_entities'],
-                name='Total',
-                text=[f'Total: {total}' for total in results['total_entities']],
-                textposition='auto',
-            ))
-            fig_totals.update_layout(
-                title='Total de Valores Perdidos',
-                xaxis_title='Valor',
-                yaxis_title='Total',
-                showlegend=True,
-                height=400,
-                width=900,
-                margin=dict(t=50, b=50)
-            )
-            
-            # Update plots in output widget
+            # Create and display plots
             with self.plots_output:
                 clear_output(wait=True)
+                
+                # Create percentage plot
+                fig_percentages = go.Figure()
+                fig_percentages.add_trace(go.Bar(
+                    x=results['group_by_val1'],
+                    y=results['lost_entities'] / results['total_entities'] * 100,
+                    name='Percentual',
+                    text=[f'{p:.1f}%' for p in results['lost_entities'] / results['total_entities'] * 100],
+                    textposition='auto',
+                ))
+                fig_percentages.update_layout(
+                    title='Percentual de Valores Perdidos',
+                    xaxis_title='Valor',
+                    yaxis_title='Percentual (%)',
+                    showlegend=True,
+                    height=400,
+                    width=900,
+                    margin=dict(t=50, b=50)
+                )
                 display(fig_percentages)
+                
+                # Create totals plot
+                fig_totals = go.Figure()
+                fig_totals.add_trace(go.Bar(
+                    x=results['group_by_val1'],
+                    y=results['total_entities'],
+                    name='Total',
+                    text=[f'Total: {total}' for total in results['total_entities']],
+                    textposition='auto',
+                ))
+                fig_totals.update_layout(
+                    title='Total de Valores Perdidos',
+                    xaxis_title='Valor',
+                    yaxis_title='Total',
+                    showlegend=True,
+                    height=400,
+                    width=900,
+                    margin=dict(t=50, b=50)
+                )
                 display(fig_totals)
             
             print("Plots updated successfully!")

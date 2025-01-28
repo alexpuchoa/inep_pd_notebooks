@@ -26,7 +26,15 @@ class LostValuesVisualizationColab:
     def __init__(self, data_path):
         """Initialize the visualization interface with CSV data."""
         try:
+            # Configure logging
+            logging.basicConfig(
+                level=logging.INFO,
+                format='%(asctime)s - %(levelname)s - %(message)s'
+            )
+            logger.info("Starting initialization...")
+            
             # Enable widget display in Colab
+            logger.info("Enabling Colab widget display...")
             display(HTML("""
                 <script src="/static/components/requirejs/require.js"></script>
                 <script>
@@ -38,8 +46,10 @@ class LostValuesVisualizationColab:
                   });
                 </script>
             """))
+            logger.info("Colab widget display enabled")
             
-            # Initialize debug output first
+            # Initialize debug output
+            logger.info("Creating debug output widget...")
             self.debug_output = widgets.Output(
                 layout=widgets.Layout(
                     height='200px',
@@ -57,9 +67,13 @@ class LostValuesVisualizationColab:
 
             self.data_path = Path(data_path)
             csv_path = self.data_path / "dp_results_stats_bq.csv"
-            queries_path = self.data_path / "queries_formatadas_bq.csv"
+            queries_file = self.data_path / "queries_formatadas_bq.csv"
+
+            display(self.debug_output)
+            logger.info("Debug output widget created")
             
             # Load data using pandas
+            logger.info(f"Reading CSV from: {csv_path}")
             self.df = pd.read_csv(csv_path, 
                                 dtype={
                                     'epsilon': 'float64',
@@ -68,71 +82,83 @@ class LostValuesVisualizationColab:
                                     'original_value': 'float64'
                                 }, sep=';', encoding='latin1', low_memory=False)
             
-            self.debug_print(f"Data loaded. Shape: {self.df.shape}")
+            logger.info(f"Data loaded successfully. Shape: {self.df.shape}")
             
             # Load queries configuration
-            #queries_file = Path(data_path).parent / "queries_formatadas_bq.csv"
-            self.debug_print(f"Looking for queries file at: {queries_path}")
-            self.queries_config = pd.read_csv(queries_path, sep=';')
+            #queries_file = Path(csv_path).parent / "queries_formatadas_bq.csv"
+            logger.info(f"Loading queries config from: {queries_file}")
+            self.queries_config = pd.read_csv(queries_file, sep=';')
+            logger.info(f"Queries config loaded. Shape: {self.queries_config.shape}")
             
             # Define ordered lists
+            logger.info("Setting up hierarchy levels and aggregations...")
             self.hierarchy_levels = ['NO_REGIAO', 'SG_UF', 'NO_MUNICIPIO', 'CO_ENTIDADE']
             self.ordered_aggregations = ['QT_ALUNOS', 'MEDIA_NOTA', 'SOMA_NOTAS']
             
-            # Extract unique aggregated_data values in specified order
+            # Extract unique aggregated_data values
+            logger.info("Extracting aggregation options...")
             self.aggregation_options = [agg for agg in self.ordered_aggregations 
                                       if agg in self.df['aggregated_data'].str.upper().unique()]
+            logger.info(f"Available aggregations: {self.aggregation_options}")
             
-            # Create mapping of segmentation options for each aggregation
+            # Create mapping of segmentation options
+            logger.info("Creating segmentation mapping...")
             self.segmentation_map = {}
             for agg in self.aggregation_options:
+                logger.info(f"Processing aggregation: {agg}")
                 agg_queries = self.queries_config[self.queries_config['aggregated_data'].str.upper() == agg]
                 
-                # Parse group_by column to get segmentation options
+                # Parse group_by column
                 group_by_values = agg_queries['group_by'].dropna().unique()
                 
-                # Initialize lists for each segmentation level
+                # Initialize segmentation options
                 seg2_options = set()
                 seg3_options = set()
                 
                 for group_by in group_by_values:
                     if pd.isna(group_by):
                         continue
-                    
-                    # Split group_by string into individual columns
                     cols = [col.strip() for col in group_by.split(',')]
-                    
-                    # Add other segmentations if they exist
                     if len(cols) > 1:
                         seg2_options.add(cols[1])
                     if len(cols) > 2:
                         seg3_options.add(cols[2])
                 
-                # Store options for this aggregation
                 self.segmentation_map[agg] = {
                     'seg1': self.hierarchy_levels,
                     'seg2': sorted(seg2_options | {'Todas'}),
                     'seg3': sorted(seg3_options | {'Todas'})
                 }
+                logger.info(f"Segmentation options for {agg}: {self.segmentation_map[agg]}")
             
-            # Create widgets first
+            # Create widgets
+            logger.info("Creating widgets...")
             self._create_widgets()
+            logger.info("Widgets created successfully")
             
-            # Then initialize geographic filters
+            # Initialize geographic filters
+            logger.info("Loading geographic filters...")
             self._load_regions()
+            logger.info("Geographic filters loaded")
             
             # Connect observers
+            logger.info("Connecting observers...")
             self._connect_observers()
+            logger.info("Observers connected")
             
-            # Finally create and display the container
+            # Create and display container
+            logger.info("Creating display container...")
             self.container = self.display_chart()
+            logger.info("Display container created")
+            
+            logger.info("Displaying container...")
             display(self.container)
             
-            self.debug_print("Initialization complete!")
+            logger.info("Initialization complete!")
             
         except Exception as e:
-            print(f"Error initializing visualization: {str(e)}")
-            print(traceback.format_exc())
+            logger.error(f"Error initializing visualization: {str(e)}")
+            logger.error(traceback.format_exc())
             
     def _create_widgets(self):
         """

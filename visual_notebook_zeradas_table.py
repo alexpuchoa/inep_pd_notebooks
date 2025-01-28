@@ -69,9 +69,6 @@ class LostValuesTableVisualization:
             # Create widgets
             self._create_widgets()
             
-            # Initialize geographic filters
-            self._load_regions()
-            
             # Create and display container
             self.container = self._create_interface()
             display(self.container)
@@ -145,25 +142,6 @@ class LostValuesTableVisualization:
             description='Segm. 3:'
         )
         
-        # Geographic filters
-        self.region_dropdown = widgets.Dropdown(
-            options=['Todas'],
-            value='Todas',
-            description='Região:'
-        )
-        
-        self.uf_dropdown = widgets.Dropdown(
-            options=['Todas'],
-            value='Todas',
-            description='UF:'
-        )
-        
-        self.mun_dropdown = widgets.Dropdown(
-            options=['Todas'],
-            value='Todas',
-            description='Município:'
-        )
-        
         # Update button
         self.submit_button = widgets.Button(
             description='Atualizar Tabela',
@@ -188,20 +166,70 @@ class LostValuesTableVisualization:
             widgets.HBox([self.segment2_dropdown, self.segment3_dropdown])
         ])
         
-        geo_controls = widgets.VBox([
-            widgets.HTML("<b>Filtros Geográficos</b>"),
-            widgets.HBox([self.region_dropdown, self.uf_dropdown, self.mun_dropdown])
-        ])
-        
         return widgets.VBox([
             title,
             query_controls,
             segmentation_controls,
-            geo_controls,
             self.submit_button
         ], layout=widgets.Layout(
             padding='20px',
             width='100%',
             border='1px solid #ddd',
             margin='10px'
-        )) 
+        ))
+
+    def _connect_observers(self):
+        """Connect widget observers."""
+        self.submit_button.on_click(self.update_table)
+        self.aggregation_dropdown.observe(self._update_segmentation_options, names='value')
+
+    def update_table(self, button_clicked=None):
+        """Update the table with current selections."""
+        try:
+            with self.table_output:
+                clear_output(wait=True)
+                
+                # Get current selections
+                aggregation = self.aggregation_dropdown.value
+                hierarchy = self.hierarchy_dropdown.value
+                seg2 = self.segment2_dropdown.value
+                seg3 = self.segment3_dropdown.value
+                
+                # Filter data based on selections
+                filtered_df = self.df[
+                    (self.df['aggregated_data'].str.upper() == aggregation)
+                ]
+                
+                # Group by epsilon and calculate statistics
+                results = filtered_df.groupby('epsilon').agg({
+                    'original_value': ['count', 'sum'],
+                    'dp_avg': ['count']
+                }).reset_index()
+                
+                # Calculate percentages
+                results['lost_percentage'] = (
+                    (results[('dp_avg', 'count')] - results[('original_value', 'count')]) / 
+                    results[('original_value', 'count')] * 100
+                )
+                
+                # Format table
+                table_df = pd.DataFrame({
+                    'Epsilon': results['epsilon'],
+                    'Total Entidades': results[('original_value', 'count')],
+                    'Entidades Perdidas': (
+                        results[('original_value', 'count')] - 
+                        results[('dp_avg', 'count')]
+                    ),
+                    'Percentual Perdido (%)': results['lost_percentage'].round(2)
+                })
+                
+                # Display table
+                display(HTML(table_df.to_html(
+                    index=False,
+                    float_format=lambda x: '{:.2f}'.format(x)
+                )))
+                
+        except Exception as e:
+            with self.log_output:
+                print(f"Error updating table: {str(e)}")
+                print(traceback.format_exc()) 

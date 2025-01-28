@@ -636,8 +636,7 @@ class LostValuesVisualizationColab:
         """Handler for changes in aggregation selection"""
         try:
             new_agg = change.new
-            with self.debug_output:
-                print(f"\nAgregação alterada para: {new_agg}")
+            print(f"\nAgregação alterada para: {new_agg}")
             
             # Update segmentation dropdowns with new options
             current_level = self.hierarchy_dropdown.value

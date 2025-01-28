@@ -75,6 +75,7 @@ class LostValuesVisualizationColab:
             
             # Load data using pandas
             logger.info(f"Reading CSV from: {csv_path}")
+            '''
             self.df = pd.read_csv(csv_path, 
                                 dtype={
                                     'epsilon': 'float64',
@@ -82,7 +83,8 @@ class LostValuesVisualizationColab:
                                     'dp_avg': 'float64',
                                     'original_value': 'float64'
                                 }, sep=';', encoding='latin1', low_memory=False)
-            
+            '''
+            self.df = self.load_csv_in_chunks(csv_path)
             logger.info(f"Data loaded successfully. Shape: {self.df.shape}")
             
             # Load queries configuration
@@ -161,6 +163,24 @@ class LostValuesVisualizationColab:
             logger.error(f"Error initializing visualization: {str(e)}")
             logger.error(traceback.format_exc())
             
+    def load_csv_in_chunks(self, filepath, chunksize=100000):
+        try:
+            chunks = []
+            for chunk in pd.read_csv(filepath, chunksize=chunksize, 
+                                    dtype={
+                                            'epsilon': 'float64',
+                                            'delta': 'float64',
+                                            'dp_avg': 'float64',
+                                            'original_value': 'float64'
+                                        },
+                                     sep=';', encoding='latin1', low_memory=False):
+                chunks.append(chunk)
+            df = pd.concat(chunks, ignore_index=True)
+            return df
+        except Exception as e:
+            print(f"Error reading CSV in chunks: {str(e)}")
+            raise
+        
     def _create_widgets(self):
         """
         Cria os widgets com nova estrutura baseada em agregações e segmentações.

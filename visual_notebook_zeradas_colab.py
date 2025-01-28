@@ -169,6 +169,7 @@ class LostValuesVisualizationColab:
                                         },
                                      sep=';', encoding='latin1', low_memory=False):
                 chunks.append(chunk)
+                print(f"Chunk {len(chunks)} loaded...")
             df = pd.concat(chunks, ignore_index=True)
             return df
         except Exception as e:

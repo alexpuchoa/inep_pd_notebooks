@@ -277,8 +277,16 @@ class LostValuesVisualizationColab:
             with self.log_output:
                 print("- Creating figure widgets...")
             
-            # Initialize empty figures with explicit sizes
-            self.fig_percentages = go.FigureWidget(
+            # Create output widgets for plots
+            self.plots_output = widgets.Output(
+                layout=widgets.Layout(
+                    width='100%',
+                    margin='20px 0'
+                )
+            )
+            
+            # Initialize empty figures
+            self.fig_percentages = go.Figure(
                 layout=go.Layout(
                     height=400,
                     width=900,
@@ -287,7 +295,7 @@ class LostValuesVisualizationColab:
                 )
             )
             
-            self.fig_totals = go.FigureWidget(
+            self.fig_totals = go.Figure(
                 layout=go.Layout(
                     height=400,
                     width=900,
@@ -296,15 +304,11 @@ class LostValuesVisualizationColab:
                 )
             )
             
-            # Create VBox with both figures and force their display
+            # Create VBox with plots output
             self.lost_values_fig = widgets.VBox([
                 widgets.HTML("<h3>Gráficos:</h3>"),
-                self.fig_percentages,
-                self.fig_totals
-            ], layout=widgets.Layout(
-                width='100%',
-                margin='20px 0'
-            ))
+                self.plots_output
+            ])
             
             with self.log_output:
                 print("All widgets created successfully!")
@@ -326,50 +330,33 @@ class LostValuesVisualizationColab:
             title = widgets.HTML(
                 "<h2 style='text-align: center; margin: 20px 0; color: #2c3e50; font-family: Arial, sans-serif; padding: 15px; border-bottom: 2px solid #3498db;'>Visualização de Valores Perdidos</h2>"
             )
-            display(title)  # Force display of title
             
             notas = widgets.HTML(
                 "<h4 style='text-align: left; margin: 15px 0; color: #2c3e50; font-family: Arial, sans-serif;'>NIVEL - Como os dados zerados do nivel hirárquico logo abaixo serão agregados. Ex.: Nivel = SG_UF, dados de MUNICIPIOS zerados são agregados por UF.<br>SEGMENTAÇÕES 2 e 3 - Somente disponível para NIVEL = NO_REGIAO.<br>FILTRO GEOGRÁFICO - Seleção obrigatória se NIVEL <> NO_REGIAO. Se NIVEL = SG_UF, uma Região deve ser selecionada. Se NIVEL = CO_ENTIDADE, um Município deve ser selecionado.</br></h4>"
             )
-            display(notas)  # Force display of notes
             
             controls_title = widgets.HTML("<h3 style='color: #2c3e50; font-family: Arial, sans-serif; margin: 15px 0;'>Controles</h3>")
-            display(controls_title)  # Force display of controls title
             
-            # Controls sections with forced display
+            # Controls sections
             query_controls = widgets.VBox([
                 widgets.HTML("<b>Configuração da Query</b>"),
                 widgets.HBox([self.aggregation_dropdown, self.hierarchy_dropdown])
             ])
-            display(query_controls)
             
             segmentation_controls = widgets.VBox([
                 widgets.HTML("<b>Segmentações</b>"),
                 widgets.HBox([self.segment2_dropdown, self.segment3_dropdown])
             ])
-            display(segmentation_controls)
             
             param_controls = widgets.VBox([
                 widgets.HTML("<b>Parâmetros DP</b>"),
                 widgets.HBox([self.epsilon_dropdown, self.delta_dropdown])
             ])
-            display(param_controls)
             
             geo_controls = widgets.VBox([
                 widgets.HTML("<b>Filtros Geográficos</b>"),
                 widgets.HBox([self.region_dropdown, self.uf_dropdown, self.mun_dropdown])
             ])
-            display(geo_controls)
-            
-            # Display submit button
-            display(self.submit_button)
-            
-            # Display figures
-            display(self.lost_values_fig)
-            
-            # Debug section
-            display(widgets.HTML("<h4>Debug Messages:</h4>"))
-            display(self.debug_output)
             
             with self.log_output:
                 print("Display components created and displayed individually")
@@ -476,38 +463,42 @@ class LostValuesVisualizationColab:
             self.plot_lost_values(results)
             
             # Update percentage figure
-            with self.fig_percentages.batch_update():
-                self.fig_percentages.data = []  # Clear previous data
-                self.fig_percentages.add_trace(go.Bar(
-                    x=results['group_by_val1'],
-                    y=results['lost_entities'] / results['total_entities'] * 100,
-                    name='Percentual',
-                    text=[f'{p:.1f}%' for p in results['lost_entities'] / results['total_entities'] * 100],
-                    textposition='auto',
-                ))
-                self.fig_percentages.update_layout(
-                    title='Percentual de Valores Perdidos',
-                    xaxis_title='Valor',
-                    yaxis_title='Percentual (%)',
-                    showlegend=True
-                )
+            self.fig_percentages = go.Figure()
+            self.fig_percentages.add_trace(go.Bar(
+                x=results['group_by_val1'],
+                y=results['lost_entities'] / results['total_entities'] * 100,
+                name='Percentual',
+                text=[f'{p:.1f}%' for p in results['lost_entities'] / results['total_entities'] * 100],
+                textposition='auto',
+            ))
+            self.fig_percentages.update_layout(
+                title='Percentual de Valores Perdidos',
+                xaxis_title='Valor',
+                yaxis_title='Percentual (%)',
+                showlegend=True
+            )
             
             # Update totals figure
-            with self.fig_totals.batch_update():
-                self.fig_totals.data = []  # Clear previous data
-                self.fig_totals.add_trace(go.Bar(
-                    x=results['group_by_val1'],
-                    y=results['total_entities'],
-                    name='Total',
-                    text=[f'Total: {total}' for total in results['total_entities']],
-                    textposition='auto',
-                ))
-                self.fig_totals.update_layout(
-                    title='Total de Valores Perdidos',
-                    xaxis_title='Valor',
-                    yaxis_title='Total',
-                    showlegend=True
-                )
+            self.fig_totals = go.Figure()
+            self.fig_totals.add_trace(go.Bar(
+                x=results['group_by_val1'],
+                y=results['total_entities'],
+                name='Total',
+                text=[f'Total: {total}' for total in results['total_entities']],
+                textposition='auto',
+            ))
+            self.fig_totals.update_layout(
+                title='Total de Valores Perdidos',
+                xaxis_title='Valor',
+                yaxis_title='Total',
+                showlegend=True
+            )
+            
+            # Display updated plots
+            with self.plots_output:
+                self.plots_output.clear_output(wait=True)
+                display(self.fig_percentages)
+                display(self.fig_totals)
             
             with self.log_output:
                 print("Plots updated successfully!")
@@ -647,8 +638,8 @@ class LostValuesVisualizationColab:
             }[self.hierarchy_dropdown.value]
                 
             # Clear existing plots
-            self.fig_percentages.data = []
-            self.fig_totals.data = []
+            self.fig_percentages = go.Figure()
+            self.fig_totals = go.Figure()
             
             # Calculate percentages
             percentages = [

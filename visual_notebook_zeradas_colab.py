@@ -106,13 +106,9 @@ class LostValuesVisualizationColab:
             print(traceback.format_exc())
 
     def _create_widgets(self):
-        """
-        Cria os widgets com nova estrutura baseada em agregações e segmentações.
-        """
+        """Create the control widgets."""
         try:
-            with self.log_output:
-                print("\nCreating widgets:")
-                print("- Creating aggregation dropdown...")
+            print("- Creating aggregation dropdown...")
             
             # Aggregation type dropdown
             self.aggregation_dropdown = widgets.Dropdown(
@@ -121,20 +117,16 @@ class LostValuesVisualizationColab:
                 description='Agregação:'
             )
             
-            with self.log_output:
-                print("- Creating hierarchy dropdown...")
-            
-            # Hierarchical level dropdown (first segmentation)
+            print("- Creating hierarchy dropdown...")
+            # Hierarchical level dropdown
             self.hierarchy_dropdown = widgets.Dropdown(
                 options=self.hierarchy_levels,
                 value=self.hierarchy_levels[0],
                 description='Nível:'
             )
             
-            with self.log_output:
-                print("- Creating segmentation dropdowns...")
-            
-            # Second and third segmentation dropdowns
+            print("- Creating segmentation dropdowns...")
+            # Segmentation dropdowns
             self.segment2_dropdown = widgets.Dropdown(
                 options=['Todas'],
                 value='Todas',
@@ -147,9 +139,7 @@ class LostValuesVisualizationColab:
                 description='Segm. 3:'
             )
             
-            with self.log_output:
-                print("- Creating geographic filters...")
-            
+            print("- Creating geographic filters...")
             # Geographic filters
             self.region_dropdown = widgets.Dropdown(
                 options=['Todas'],
@@ -169,159 +159,81 @@ class LostValuesVisualizationColab:
                 description='Município:'
             )
             
-            with self.log_output:
-                print("- Creating DP parameters...")
-            
+            print("- Creating DP parameters...")
             # DP parameters
             self.epsilon_dropdown = widgets.Dropdown(
-                options=[1.0, 5.0, 10.0],
-                value=1.0,
+                options=sorted(self.df['epsilon'].unique()),
                 description='Epsilon:'
             )
             
             self.delta_dropdown = widgets.Dropdown(
-                options=[1e-5, 1e-2],
-                value=1e-5,
+                options=sorted(self.df['delta'].unique()),
                 description='Delta:'
             )
             
-            with self.log_output:
-                print("- Creating submit button...")
-            
+            print("- Creating submit button...")
             # Submit button
             self.submit_button = widgets.Button(
                 description='Atualizar Gráfico',
                 button_style='primary',
-                tooltip='Clique para atualizar o gráfico com as seleções atuais'
+                tooltip='Clique para atualizar o gráfico'
             )
             
-            with self.log_output:
-                print("- Creating figure widgets...")
+            print("- Creating figure widgets...")
+            # Create plots output area
+            self.plots_output = widgets.Output()
             
-            # Create output widget for plots
-            self.plots_output = widgets.Output(
-                layout=widgets.Layout(
-                    width='100%',
-                    margin='20px 0'
-                )
-            )
-            
-            # Initialize empty figures
-            self.fig_percentages = go.Figure(
-                layout=go.Layout(
-                    height=400,
-                    width=900,
-                    title='Percentual de Valores Perdidos',
-                    showlegend=True
-                )
-            )
-            
-            self.fig_totals = go.Figure(
-                layout=go.Layout(
-                    height=400,
-                    width=900,
-                    title='Total de Valores Perdidos',
-                    showlegend=True
-                )
-            )
-            
-            # Explicitly display the figures in the output widget
-            with self.plots_output:
-                display(self.fig_percentages)
-                display(self.fig_totals)
-            
-            # Create VBox with plots output
-            self.lost_values_fig = widgets.VBox([
-                widgets.HTML("<h3>Gráficos:</h3>"),
-                self.plots_output
-            ])
-            
-            with self.log_output:
-                print("All widgets created successfully!")
+            print("All widgets created successfully!")
             
         except Exception as e:
-            with self.log_output:
-                print(f"Error creating widgets: {str(e)}")
-                print(traceback.format_exc())
+            print(f"Error creating widgets: {str(e)}")
+            print(traceback.format_exc())
 
     def display_chart(self):
-        """
-        Create the visualization interface
-        """
+        """Create the visualization interface."""
         try:
-            with self.log_output:
-                print("\nBuilding display:")
+            print("\nBuilding display:")
             
             # Create main interface container
             interface = widgets.VBox([
-                # Title
                 widgets.HTML(
-                    "<h2 style='text-align: center; margin: 20px 0; color: #2c3e50; font-family: Arial, sans-serif; padding: 15px; border-bottom: 2px solid #3498db;'>Visualização de Valores Perdidos</h2>"
+                    "<h2 style='text-align: center; margin: 20px 0; color: #2c3e50;'>Visualização de Valores Perdidos</h2>"
                 ),
-                
-                # Notes
                 widgets.HTML(
-                    "<h4 style='text-align: left; margin: 15px 0; color: #2c3e50; font-family: Arial, sans-serif;'>NIVEL - Como os dados zerados do nivel hirárquico logo abaixo serão agregados. Ex.: Nivel = SG_UF, dados de MUNICIPIOS zerados são agregados por UF.<br>SEGMENTAÇÕES 2 e 3 - Somente disponível para NIVEL = NO_REGIAO.<br>FILTRO GEOGRÁFICO - Seleção obrigatória se NIVEL <> NO_REGIAO. Se NIVEL = SG_UF, uma Região deve ser selecionada. Se NIVEL = CO_ENTIDADE, um Município deve ser selecionado.</br></h4>"
+                    "<h4 style='text-align: left; margin: 15px 0; color: #2c3e50;'>NIVEL - Como os dados zerados do nivel hirárquico logo abaixo serão agregados.</h4>"
                 ),
-                
-                # Controls section
-                widgets.HTML("<h3 style='color: #2c3e50; font-family: Arial, sans-serif; margin: 15px 0;'>Controles</h3>"),
-                
-                # Query controls
                 widgets.VBox([
                     widgets.HTML("<b>Configuração da Query</b>"),
                     widgets.HBox([self.aggregation_dropdown, self.hierarchy_dropdown])
                 ]),
-                
-                # Segmentation controls
                 widgets.VBox([
                     widgets.HTML("<b>Segmentações</b>"),
                     widgets.HBox([self.segment2_dropdown, self.segment3_dropdown])
                 ]),
-                
-                # DP Parameters
                 widgets.VBox([
                     widgets.HTML("<b>Parâmetros DP</b>"),
                     widgets.HBox([self.epsilon_dropdown, self.delta_dropdown])
                 ]),
-                
-                # Geographic filters
                 widgets.VBox([
                     widgets.HTML("<b>Filtros Geográficos</b>"),
                     widgets.HBox([self.region_dropdown, self.uf_dropdown, self.mun_dropdown])
                 ]),
-                
-                # Submit button
                 self.submit_button,
-                
-                # Plots
-                self.lost_values_fig,
-                
-                # Debug section
-                widgets.HTML("<h4>Debug Messages:</h4>"),
-                self.debug_output
-            ])
-            
-            # Apply layout to the container
-            interface.layout = widgets.Layout(
+                widgets.HTML("<h3>Gráficos:</h3>"),
+                self.plots_output
+            ], layout=widgets.Layout(
                 padding='20px',
                 width='100%',
                 border='1px solid #ddd',
-                margin='10px',
-                display='flex',
-                flex_flow='column',
-                align_items='stretch'
-            )
+                margin='10px'
+            ))
             
-            with self.log_output:
-                print("Display interface built successfully")
-            
+            print("Display interface built successfully")
             return interface
             
         except Exception as e:
-            with self.log_output:
-                print(f"Error creating interface: {str(e)}")
-                print(traceback.format_exc())
+            print(f"Error creating interface: {str(e)}")
+            print(traceback.format_exc())
 
     def _load_regions(self):
         """Load initial list of regions from reference CSV"""

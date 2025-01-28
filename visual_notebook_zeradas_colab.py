@@ -26,17 +26,17 @@ class LostValuesVisualizationColab:
     def __init__(self, data_path):
         """Initialize the visualization interface with CSV data."""
         try:
-            # Create and immediately display outputs
+            # Create and display logging output
             self.log_output = widgets.Output(
                 layout=widgets.Layout(
                     border='1px solid #ddd',
                     padding='10px',
-                    margin='10px 0',
-                    overflow_y='auto'
+                    margin='10px 0'
                 )
             )
             display(self.log_output)
             
+            # Create debug output widget
             self.debug_output = widgets.Output(
                 layout=widgets.Layout(
                     height='200px',
@@ -47,17 +47,6 @@ class LostValuesVisualizationColab:
                     overflow_y='auto'
                 )
             )
-            display(self.debug_output)
-            
-            # Create visualization output
-            self.viz_output = widgets.Output(
-                layout=widgets.Layout(
-                    border='1px solid #ddd',
-                    padding='10px',
-                    margin='10px 0'
-                )
-            )
-            display(self.viz_output)
             
             with self.log_output:
                 print("Loading data...")
@@ -133,29 +122,25 @@ class LostValuesVisualizationColab:
             # Create widgets
             self._create_widgets()
             
+            # Initialize geographic filters
             with self.log_output:
                 print("Loading geographic filters...")
-            
-            # Initialize geographic filters
             self._load_regions()
             
+            # Connect observers
             with self.log_output:
                 print("Connecting observers...")
-            
-            # Connect observers
             self._connect_observers()
             
+            # Create and display visualization
             with self.log_output:
-                print("Creating display container...")
+                print("Creating visualization interface...")
             
-            # Create container
-            self.container = self.display_chart()
+            # Create the interface
+            self.interface = self.display_chart()
             
-            # Display in visualization output
-            with self.viz_output:
-                display(widgets.HTML("<h2>Visualization Interface:</h2>"))
-                display(self.container)
-                print("Interface should be visible above")
+            # Force display of the interface
+            display(self.interface)
             
             with self.log_output:
                 print("Initialization complete!")
@@ -326,50 +311,58 @@ class LostValuesVisualizationColab:
             with self.log_output:
                 print("\nBuilding display:")
             
-            # Create all components
-            title = widgets.HTML(
-                "<h2 style='text-align: center; margin: 20px 0; color: #2c3e50; font-family: Arial, sans-serif; padding: 15px; border-bottom: 2px solid #3498db;'>Visualização de Valores Perdidos</h2>"
-            )
-            
-            notas = widgets.HTML(
-                "<h4 style='text-align: left; margin: 15px 0; color: #2c3e50; font-family: Arial, sans-serif;'>NIVEL - Como os dados zerados do nivel hirárquico logo abaixo serão agregados. Ex.: Nivel = SG_UF, dados de MUNICIPIOS zerados são agregados por UF.<br>SEGMENTAÇÕES 2 e 3 - Somente disponível para NIVEL = NO_REGIAO.<br>FILTRO GEOGRÁFICO - Seleção obrigatória se NIVEL <> NO_REGIAO. Se NIVEL = SG_UF, uma Região deve ser selecionada. Se NIVEL = CO_ENTIDADE, um Município deve ser selecionado.</br></h4>"
-            )
-            
-            controls_title = widgets.HTML("<h3 style='color: #2c3e50; font-family: Arial, sans-serif; margin: 15px 0;'>Controles</h3>")
-            
-            # Controls sections
-            query_controls = widgets.VBox([
-                widgets.HTML("<b>Configuração da Query</b>"),
-                widgets.HBox([self.aggregation_dropdown, self.hierarchy_dropdown])
-            ])
-            
-            segmentation_controls = widgets.VBox([
-                widgets.HTML("<b>Segmentações</b>"),
-                widgets.HBox([self.segment2_dropdown, self.segment3_dropdown])
-            ])
-            
-            param_controls = widgets.VBox([
-                widgets.HTML("<b>Parâmetros DP</b>"),
-                widgets.HBox([self.epsilon_dropdown, self.delta_dropdown])
-            ])
-            
-            geo_controls = widgets.VBox([
-                widgets.HTML("<b>Filtros Geográficos</b>"),
-                widgets.HBox([self.region_dropdown, self.uf_dropdown, self.mun_dropdown])
-            ])
-            
-            with self.log_output:
-                print("Display components created and displayed individually")
-            
-            # Return container for reference
-            return widgets.VBox([
-                title, notas, controls_title,
-                query_controls, segmentation_controls,
-                param_controls, geo_controls,
-                self.submit_button, self.lost_values_fig,
+            # Create main interface container
+            interface = widgets.VBox([
+                # Title
+                widgets.HTML(
+                    "<h2 style='text-align: center; margin: 20px 0; color: #2c3e50; font-family: Arial, sans-serif; padding: 15px; border-bottom: 2px solid #3498db;'>Visualização de Valores Perdidos</h2>"
+                ),
+                
+                # Notes
+                widgets.HTML(
+                    "<h4 style='text-align: left; margin: 15px 0; color: #2c3e50; font-family: Arial, sans-serif;'>NIVEL - Como os dados zerados do nivel hirárquico logo abaixo serão agregados. Ex.: Nivel = SG_UF, dados de MUNICIPIOS zerados são agregados por UF.<br>SEGMENTAÇÕES 2 e 3 - Somente disponível para NIVEL = NO_REGIAO.<br>FILTRO GEOGRÁFICO - Seleção obrigatória se NIVEL <> NO_REGIAO. Se NIVEL = SG_UF, uma Região deve ser selecionada. Se NIVEL = CO_ENTIDADE, um Município deve ser selecionado.</br></h4>"
+                ),
+                
+                # Controls section
+                widgets.HTML("<h3 style='color: #2c3e50; font-family: Arial, sans-serif; margin: 15px 0;'>Controles</h3>"),
+                
+                # Query controls
+                widgets.VBox([
+                    widgets.HTML("<b>Configuração da Query</b>"),
+                    widgets.HBox([self.aggregation_dropdown, self.hierarchy_dropdown])
+                ]),
+                
+                # Segmentation controls
+                widgets.VBox([
+                    widgets.HTML("<b>Segmentações</b>"),
+                    widgets.HBox([self.segment2_dropdown, self.segment3_dropdown])
+                ]),
+                
+                # DP Parameters
+                widgets.VBox([
+                    widgets.HTML("<b>Parâmetros DP</b>"),
+                    widgets.HBox([self.epsilon_dropdown, self.delta_dropdown])
+                ]),
+                
+                # Geographic filters
+                widgets.VBox([
+                    widgets.HTML("<b>Filtros Geográficos</b>"),
+                    widgets.HBox([self.region_dropdown, self.uf_dropdown, self.mun_dropdown])
+                ]),
+                
+                # Submit button
+                self.submit_button,
+                
+                # Plots
+                self.lost_values_fig,
+                
+                # Debug section
                 widgets.HTML("<h4>Debug Messages:</h4>"),
                 self.debug_output
-            ], layout=widgets.Layout(
+            ])
+            
+            # Apply layout to the container
+            interface.layout = widgets.Layout(
                 padding='20px',
                 width='100%',
                 border='1px solid #ddd',
@@ -377,11 +370,16 @@ class LostValuesVisualizationColab:
                 display='flex',
                 flex_flow='column',
                 align_items='stretch'
-            ))
+            )
+            
+            with self.log_output:
+                print("Display interface built successfully")
+            
+            return interface
             
         except Exception as e:
             with self.log_output:
-                print(f"Error displaying interface: {str(e)}")
+                print(f"Error creating interface: {str(e)}")
                 print(traceback.format_exc())
 
     def _load_regions(self):

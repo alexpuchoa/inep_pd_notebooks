@@ -36,9 +36,6 @@ class LostValuesVisualizationColab:
             )
             display(self.log_output)
             
-            with self.log_output:
-                print("Starting initialization...")
-            
             # Create debug output widget
             self.debug_output = widgets.Output(
                 layout=widgets.Layout(
@@ -55,54 +52,56 @@ class LostValuesVisualizationColab:
                 print("Loading data...")
                 print(f"Reading CSV from: {data_path}")
             
-            # Load data with chunking and better error handling
-            try:
-                self.data_path = Path(data_path)
-                csv_path = self.data_path / "dp_results_stats_bq.csv"
-                queries_file = self.data_path / "queries_formatadas_bq.csv"
-                
-                # Load data in chunks
-                chunks = []
-                chunk_size = 500000  # Adjust if needed
-                
-                for i, chunk in enumerate(pd.read_csv(
-                    csv_path,
-                    dtype={
-                        'epsilon': 'float64',
-                        'delta': 'float64',
-                        'dp_avg': 'float64',
-                        'original_value': 'float64'
-                    },
-                    sep=';',
-                    encoding='latin1',
-                    chunksize=chunk_size
-                )):
-                    with self.log_output:
-                        print(f"Chunk {i+1} loaded...")
-                    chunks.append(chunk)
-                
-                with self.log_output:
-                    print("Concatenating chunks...")
-                self.df = pd.concat(chunks, ignore_index=True)
-                with self.log_output:
-                    print(f"Data loaded successfully. Shape: {self.df.shape}")
-                
-                # Load queries configuration
-                with self.log_output:
-                    print(f"Loading queries from: {queries_file}")
-                self.queries_config = pd.read_csv(queries_file, sep=';')
-                with self.log_output:
-                    print(f"Queries loaded. Shape: {self.queries_config.shape}")
-                
-            except Exception as e:
-                with self.log_output:
-                    print(f"Error loading data: {str(e)}")
-                    print(traceback.format_exc())
-                raise
+            # Load data
+            self.data_path = Path(data_path)
+            csv_path = self.data_path / "dp_results_stats_bq.csv"
+            queries_file = self.data_path / "queries_formatadas_bq.csv"
             
-            # Continue with initialization
+            # Define dtypes for all columns
+            dtypes = {
+                'epsilon': 'float64',
+                'delta': 'float64',
+                'dp_avg': 'float64',
+                'original_value': 'float64',
+                'aggregated_data': 'str',
+                'group_by': 'str',
+                'NO_REGIAO': 'str',
+                'SG_UF': 'str',
+                'NO_MUNICIPIO': 'str',
+                'CO_ENTIDADE': 'str'
+            }
+            
+            # Load data in chunks
+            chunks = []
+            chunk_size = 500000
+            
+            for i, chunk in enumerate(pd.read_csv(
+                csv_path,
+                dtype=dtypes,
+                sep=';',
+                encoding='latin1',
+                low_memory=False,
+                chunksize=chunk_size
+            )):
+                with self.log_output:
+                    print(f"Chunk {i+1} loaded...")
+                chunks.append(chunk)
+            
             with self.log_output:
-                print("Setting up options...")
+                print("Concatenating chunks...")
+            self.df = pd.concat(chunks, ignore_index=True)
+            with self.log_output:
+                print(f"Data loaded successfully. Shape: {self.df.shape}")
+            
+            # Load queries configuration
+            self.queries_config = pd.read_csv(
+                queries_file,
+                sep=';',
+                dtype={'aggregated_data': 'str', 'group_by': 'str'}
+            )
+            
+            with self.log_output:
+                print(f"Queries loaded. Shape: {self.queries_config.shape}")
             
             # Define ordered lists
             self.hierarchy_levels = ['NO_REGIAO', 'SG_UF', 'NO_MUNICIPIO', 'CO_ENTIDADE']
@@ -112,16 +111,9 @@ class LostValuesVisualizationColab:
             self.aggregation_options = [agg for agg in self.ordered_aggregations 
                                       if agg in self.df['aggregated_data'].str.upper().unique()]
             
-            with self.log_output:
-                print(f"Available aggregations: {self.aggregation_options}")
-                print("Creating segmentation mapping...")
-            
             # Create mapping of segmentation options
             self.segmentation_map = {}
             for agg in self.aggregation_options:
-                with self.log_output:
-                    print(f"Processing aggregation: {agg}")
-                
                 agg_queries = self.queries_config[self.queries_config['aggregated_data'].str.upper() == agg]
                 group_by_values = agg_queries['group_by'].dropna().unique()
                 
@@ -144,38 +136,26 @@ class LostValuesVisualizationColab:
                 }
             
             # Create widgets
-            with self.log_output:
-                print("Creating widgets...")
             self._create_widgets()
             
             # Initialize geographic filters
-            with self.log_output:
-                print("Loading geographic filters...")
             self._load_regions()
             
+            # Create and display container
+            self.container = self.display_chart()
+            display(self.container)
+            
             # Connect observers
-            with self.log_output:
-                print("Connecting observers...")
             self._connect_observers()
-            
-            # Create and display visualization
-            with self.log_output:
-                print("Creating visualization interface...")
-            
-            # Create the interface
-            self.interface = self.display_chart()
-            
-            # Force display of the interface
-            display(self.interface)
             
             with self.log_output:
                 print("Initialization complete!")
             
         except Exception as e:
             with self.log_output:
-                print(f"Error in initialization: {str(e)}")
+                print(f"Error initializing visualization: {str(e)}")
                 print(traceback.format_exc())
-            
+
     def _create_widgets(self):
         """
         Cria os widgets com nova estrutura baseada em agregações e segmentações.

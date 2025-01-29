@@ -364,8 +364,8 @@ class LostValuesVisualizationColab:
             # Display the combined plot
             with self.plots_output:
                 clear_output(wait=True)
-                display(fig)
-                print("Plot updated successfully!")
+                fig.show()
+                print("\nPlot updated successfully!")
             
         except Exception as e:
             print(f"Error updating plots: {str(e)}")

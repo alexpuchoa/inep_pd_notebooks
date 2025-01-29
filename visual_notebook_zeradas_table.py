@@ -2,12 +2,17 @@ import os
 os.environ["PYTHONIOENCODING"] = "cp1252"
 
 import ipywidgets as widgets
-from IPython.display import display, HTML
+from IPython.display import display, clear_output, HTML
 import pandas as pd
 import numpy as np
-import logging
+import plotly.graph_objects as go
+import plotly.io as pio
 from pathlib import Path
 import traceback
+import logging
+
+# Set the default renderer for Plotly to work in Colab
+pio.renderers.default = 'colab'
 
 # Configure logging
 logging.basicConfig(
@@ -22,72 +27,63 @@ class LostValuesTableVisualization:
     def __init__(self, data_path):
         """Initialize the visualization interface with CSV data."""
         try:
-            # Create and display logging output
-            self.log_output = widgets.Output(
-                layout=widgets.Layout(
-                    border='1px solid #ddd',
-                    padding='10px',
-                    margin='10px 0'
-                )
-            )
-            display(self.log_output)
+            print("Carregando App")
             
-            with self.log_output:
-                print("Loading data...")
-                print(f"Reading CSV from: {data_path}")
-            
-            # Load data
+            # Load data first
             self.data_path = Path(data_path)
             csv_path = self.data_path / "dp_results_stats_bq.csv"
             queries_file = self.data_path / "queries_formatadas_bq.csv"
             
-            self.df = pd.read_csv(csv_path, 
-                                dtype={
-                                    'epsilon': 'float64',
-                                    'delta': 'float64',
-                                    'dp_avg': 'float64',
-                                    'original_value': 'float64'
-                                }, sep=';', encoding='latin1', low_memory=False)
+            print("Loading data...")
+            print(f"Reading CSV from: {data_path}")
             
-            with self.log_output:
-                print(f"Data loaded. Shape: {self.df.shape}")
+            # Load data in chunks
+            chunks = []
+            chunk_size = 500000
+            
+            for i, chunk in enumerate(pd.read_csv(
+                csv_path,
+                dtype={
+                    'epsilon': 'float64',
+                    'delta': 'float64',
+                    'dp_avg': 'float64',
+                    'original_value': 'float64'
+                },
+                sep=';',
+                encoding='latin1',
+                low_memory=False,
+                chunksize=chunk_size
+            )):
+                chunks.append(chunk)
+            
+            print("Concatenating chunks...")
+            self.df = pd.concat(chunks, ignore_index=True)
+            print(f"Data loaded successfully. Shape: {self.df.shape}")
             
             # Load queries configuration
             self.queries_config = pd.read_csv(queries_file, sep=';')
+            print(f"Queries loaded. Shape: {self.queries_config.shape}")
             
-            # Define ordered lists
+            # Setup basic configurations
             self.hierarchy_levels = ['NO_REGIAO', 'SG_UF', 'NO_MUNICIPIO', 'CO_ENTIDADE']
             self.ordered_aggregations = ['QT_ALUNOS', 'MEDIA_NOTA', 'SOMA_NOTAS']
-            
-            # Extract unique aggregated_data values
             self.aggregation_options = [agg for agg in self.ordered_aggregations 
                                       if agg in self.df['aggregated_data'].str.upper().unique()]
             
-            # Create segmentation mapping
-            self._create_segmentation_map()
-            
             # Create widgets
+            print("\nCreating widgets:")
             self._create_widgets()
             
-            # Create and display container
-            self.container = self._create_interface()
-            display(self.container)
+            # Display interface
+            self.display_interface()
             
-            # Create table output
-            self.table_output = widgets.Output()
-            display(self.table_output)
-            
-            # Connect observers
-            self._connect_observers()
-            
-            with self.log_output:
-                print("Initialization complete!")
+            print("Initialization complete!")
             
         except Exception as e:
-            with self.log_output:
-                print(f"Error initializing visualization: {str(e)}")
-                print(traceback.format_exc())
-    
+            print(f"Error in initialization: {str(e)}")
+            print(traceback.format_exc())
+
+   
     def _create_segmentation_map(self):
         """Create mapping of segmentation options for each aggregation."""
         self.segmentation_map = {}
@@ -186,50 +182,125 @@ class LostValuesTableVisualization:
     def update_table(self, button_clicked=None):
         """Update the table with current selections."""
         try:
-            with self.table_output:
-                clear_output(wait=True)
+            # Get current selections
+            aggregation = self.aggregation_dropdown.value
+            hierarchy = self.hierarchy_dropdown.value
+            seg2 = self.segment2_dropdown.value
+            seg3 = self.segment3_dropdown.value
+            
+            # Base filter for aggregation
+            filtered_df = self.df[
+                (self.df['aggregated_data'].str.upper() == aggregation.upper())
+            ]
+            
+            # Apply geographic filters based on hierarchy
+            if hierarchy == 'NO_REGIAO':
+                filtered_df = filtered_df[filtered_df['group_by_col1'].str.upper() == 'SG_UF']
+                group_col = 'parent_regiao'
                 
-                # Get current selections
-                aggregation = self.aggregation_dropdown.value
-                hierarchy = self.hierarchy_dropdown.value
-                seg2 = self.segment2_dropdown.value
-                seg3 = self.segment3_dropdown.value
+            elif hierarchy == 'SG_UF':
+                filtered_df = filtered_df[filtered_df['group_by_col1'].str.upper() == 'NO_MUNICIPIO']
+                group_col = 'parent_uf'
+                if seg2 != 'Todas':
+                    filtered_df = filtered_df[filtered_df['parent_regiao'] == seg2]
                 
-                # Filter data based on selections
-                filtered_df = self.df[
-                    (self.df['aggregated_data'].str.upper() == aggregation)
+            elif hierarchy == 'NO_MUNICIPIO':
+                filtered_df = filtered_df[filtered_df['group_by_col1'].str.upper() == 'CO_ENTIDADE']
+                group_col = 'parent_municipio'
+                if seg2 != 'Todas':
+                    filtered_df = filtered_df[filtered_df['parent_uf'] == seg2]
+                
+            elif hierarchy == 'CO_ENTIDADE':
+                filtered_df = filtered_df[filtered_df['group_by_col1'].str.upper() == 'CO_ENTIDADE']
+                group_col = 'parent_municipio'
+                if seg2 != 'Todas':
+                    filtered_df = filtered_df[filtered_df['parent_municipio'] == seg2]
+            
+            # Get unique epsilon-delta combinations
+            eps_delta_combinations = filtered_df[['epsilon', 'delta']].drop_duplicates()
+            
+            # Create base table with total entities
+            base_table = filtered_df.groupby(group_col)['group_by_val1'].nunique().reset_index()
+            base_table.columns = [group_col, 'Total Entidades']
+            
+            # For each epsilon-delta combination, calculate lost entities
+            for _, row in eps_delta_combinations.iterrows():
+                eps, delta = row['epsilon'], row['delta']
+                
+                # Filter for this combination
+                combo_df = filtered_df[
+                    (filtered_df['epsilon'] == eps) & 
+                    (filtered_df['delta'] == delta)
                 ]
                 
-                # Group by epsilon and calculate statistics
-                results = filtered_df.groupby('epsilon').agg({
-                    'original_value': ['count', 'sum'],
-                    'dp_avg': ['count']
+                # Count lost entities for this combination
+                lost_counts = combo_df.groupby(group_col).agg({
+                    'dp_avg': lambda x: ((x == 0.0) | x.isna() | (combo_df['lost'] > 0)).sum()
                 }).reset_index()
                 
-                # Calculate percentages
-                results['lost_percentage'] = (
-                    (results[('dp_avg', 'count')] - results[('original_value', 'count')]) / 
-                    results[('original_value', 'count')] * 100
+                # Add to base table
+                col_name = f'Perdidos (ε={eps}, δ={delta})'
+                base_table = base_table.merge(
+                    lost_counts,
+                    on=group_col,
+                    how='left'
                 )
-                
-                # Format table
-                table_df = pd.DataFrame({
-                    'Epsilon': results['epsilon'],
-                    'Total Entidades': results[('original_value', 'count')],
-                    'Entidades Perdidas': (
-                        results[('original_value', 'count')] - 
-                        results[('dp_avg', 'count')]
-                    ),
-                    'Percentual Perdido (%)': results['lost_percentage'].round(2)
-                })
-                
-                # Display table
-                display(HTML(table_df.to_html(
+                base_table = base_table.rename(columns={'dp_avg': col_name})
+            
+            # Rename the entity column for display
+            base_table = base_table.rename(columns={group_col: 'Entidade'})
+            
+            # Display table
+            with self.table_output:
+                clear_output(wait=True)
+                display(HTML(base_table.to_html(
                     index=False,
-                    float_format=lambda x: '{:.2f}'.format(x)
+                    float_format=lambda x: '{:.0f}'.format(x)
                 )))
+                print("\nTabela atualizada com sucesso!")
                 
         except Exception as e:
-            with self.log_output:
-                print(f"Error updating table: {str(e)}")
-                print(traceback.format_exc()) 
+            print(f"Error updating table: {str(e)}")
+            print(traceback.format_exc())
+
+    def display_interface(self):
+        """Display the interface components."""
+        try:
+            # Create containers for each section
+            title_section = widgets.VBox([
+                widgets.HTML("<h2>Visualização de Valores Perdidos - Tabela</h2>")
+            ])
+            
+            query_section = widgets.VBox([
+                widgets.HTML("<b>Configuração da Query</b>"),
+                widgets.HBox([self.aggregation_dropdown, self.hierarchy_dropdown])
+            ])
+            
+            segmentation_section = widgets.VBox([
+                widgets.HTML("<b>Segmentações</b>"),
+                widgets.HBox([self.segment2_dropdown, self.segment3_dropdown])
+            ])
+            
+            # Create main container
+            main_container = widgets.VBox([
+                title_section,
+                query_section,
+                segmentation_section,
+                self.submit_button,
+                self.table_output
+            ], layout=widgets.Layout(
+                padding='20px',
+                width='100%',
+                border='1px solid #ddd',
+                margin='10px'
+            ))
+            
+            # Display the main container
+            display(main_container)
+            
+            # Connect observers
+            self._connect_observers()
+            
+        except Exception as e:
+            print(f"Error displaying interface: {str(e)}")
+            print(traceback.format_exc()) 

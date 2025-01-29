@@ -165,21 +165,24 @@ class LostValuesVisualizationColab:
             # Create containers for each section
             title_section = widgets.VBox([
                 widgets.HTML("<h2>Visualização de Valores Perdidos</h2>"),
-                widgets.HTML("<p>NIVEL - Como os dados zerados do nivel hierárquico logo abaixo serão agregados.</p>")
+                widgets.HTML("<p>NIVEL - Como os dados zerados do nivel hierárquico logo abaixo serão agregados. Ex.: Nivel = SG_UF, dados de MUNICIPIOS zerados são agregados por UF.</p>"),
+                widgets.HTML("<p>SEGMENTAÇÕES 2 e 3 - Somente disponível para NIVEL = NO_REGIAO.</p>"),
+                widgets.HTML("<p>FILTRO GEOGRÁFICO - Seleção obrigatória se NIVEL <> NO_REGIAO. Se NIVEL = SG_UF, uma Região deve ser selecionada. Se NIVEL = CO_ENTIDADE, um Município deve ser selecionado.</p>"),
+                widgets.HTML("<h4>Faça uma seleção e aguarde alguns instantes para obter resultado</h4>")
             ])
-            
+           
             query_section = widgets.VBox([
                 widgets.HTML("<b>Configuração da Query</b>"),
                 widgets.HBox([self.aggregation_dropdown, self.hierarchy_dropdown])
             ])
-            
+            '''
             segmentation_section = widgets.VBox([
                 widgets.HTML("<b>Segmentações</b>"),
                 widgets.HBox([self.segment2_dropdown, self.segment3_dropdown])
             ])
-            
+            '''
             dp_params_section = widgets.VBox([
-                widgets.HTML("<b>Parâmetros DP</b>"),
+                widgets.HTML("<b>Parâmetros PD</b>"),
                 widgets.HBox([self.epsilon_dropdown, self.delta_dropdown])
             ])
             

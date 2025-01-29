@@ -320,7 +320,7 @@ class LostValuesVisualizationColab:
             # Add bar plot for totals (primary y-axis)
             fig.add_trace(go.Bar(
                 x=df_plot['group_by_val1'],
-                y=df_plot['lost_entities'],  # Changed from total_lost
+                y=df_plot['lost_entities'],
                 name='Total Perdidos',
                 text=df_plot['lost_entities'].round(0),
                 textposition='auto',
@@ -335,7 +335,7 @@ class LostValuesVisualizationColab:
                 textposition='top center',
                 yaxis='y2',
                 mode='lines+markers',
-                line=dict(color='red')  # Make the line more visible
+                line=dict(color='red')
             ))
 
             # Update layout with secondary y-axis
@@ -364,7 +364,7 @@ class LostValuesVisualizationColab:
             # Display the combined plot
             with self.plots_output:
                 clear_output(wait=True)
-                fig.show()
+                display(fig)
                 print("Plot updated successfully!")
             
         except Exception as e:

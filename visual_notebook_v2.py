@@ -128,9 +128,9 @@ class VisualizationNotebook:
             self.uf_dropdown.options = ['Todas'] + sorted(self.region_data['SG_UF'].unique().tolist())
         else:
             self.uf_dropdown.options = ['Todas'] + sorted(self.uf_by_region[change.new])
-        self.uf_dropdown.value = 'Todas'
-        self.mun_dropdown.options = ['Todas']
-        self.mun_dropdown.value = 'Todas'
+            self.uf_dropdown.value = 'Todas'
+            self.mun_dropdown.options = ['Todas']
+            self.mun_dropdown.value = 'Todas'
 
     def _on_uf_change(self, change):
         """Handler para mudanças na UF"""
@@ -314,6 +314,10 @@ class VisualizationNotebook:
             # Display the interface
             display(self.stats_container)
             
+            # Initialize empty plots
+            self.stats_fig_widget.data = []
+            self.bars_fig_widget.data = []
+            
         except Exception as e:
             print(f"Error displaying interface: {str(e)}")
             import traceback
@@ -366,62 +370,32 @@ class VisualizationNotebook:
         Atualiza ambos os gráficos quando o botão for clicado.
         """
         try:
-            with self.debug_output:
-                clear_output(wait=True)
-                print("Atualizando gráficos...")
-                
-                # Store current values
-                self.current_query_type = self.query_type_slider.value
-                self.current_query_model = self.query_model_dropdown.value
-                self.current_epsilon = self.epsilon_dropdown.value
-                self.current_delta = self.delta_dropdown.value
-                #self.current_stat = self.stats_dropdown.value
-                
-                print(f"\nSeleções atuais:")
-                print(f"Query Type: {self.current_query_type}")
-                print(f"Query Model: {self.current_query_model}")
-                print(f"Epsilon: {self.current_epsilon}")
-                print(f"Delta: {self.current_delta}")
-                print(f"Estatística: {self.current_stat}")
-                print(f"Região: {self.region_dropdown.value}")
-                print(f"UF: {self.uf_dropdown.value}")
-                print(f"Município: {self.mun_dropdown.value}")
-                
-                # Get metadata for current query
-                current_metadata = self.query_metadata[
-                    (self.query_metadata['query_model'] == self.current_query_model) & 
-                    (self.query_metadata['query_type'] == self.current_query_type)
-                ].iloc[0]
-                
-                print("\nMetadados da query:")
-                print(f"Tipo de agregação: {current_metadata['aggregation_type']}")
-                print(f"Coluna agregada: {current_metadata['aggregated_column']}")
-                print(f"Dados agregados: {current_metadata['aggregated_data']}")
-                print(f"Agrupamento por: {current_metadata['group_by']}")
-                
-                # Get results from database
-                results = self.get_results(
-                    self.current_query_type, 
-                    self.current_query_model, 
-                    self.current_epsilon, 
-                    self.current_delta
+            # Store current values
+            self.current_query_type = self.query_type_slider.value
+            self.current_query_model = self.query_model_dropdown.value
+            self.current_epsilon = self.epsilon_dropdown.value
+            self.current_delta = self.delta_dropdown.value
+            self.current_stat = self.stats_dropdown.value
+            
+            # Get results from database
+            results = self.get_results(
+                self.current_query_type, 
+                self.current_query_model, 
+                self.current_epsilon, 
+                self.current_delta
+            )
+            
+            if results is not None and not results.empty:
+                filtered_results = self.filter_results(
+                    results, 
+                    self.region_dropdown.value,
+                    self.uf_dropdown.value,
+                    self.mun_dropdown.value
                 )
                 
-                if results is not None and not results.empty:
-                    print(f"\nResultados obtidos: {len(results)} linhas")
-                    filtered_results = self.filter_results(
-                        results, 
-                        self.region_dropdown.value,
-                        self.uf_dropdown.value,
-                        self.mun_dropdown.value
-                    )
-                    print(f"Resultados após filtros: {len(filtered_results)} linhas")
-                    
-                    self.update_stats_plot(filtered_results, self.current_stat)
-                    self.update_bars_plot(filtered_results)
-                    print("\nGráficos atualizados com sucesso!")
-                else:
-                    print("\nNenhum resultado encontrado para os parâmetros selecionados.")
+                # Update plots directly
+                self.update_stats_plot(filtered_results, self.current_stat)
+                self.update_bars_plot(filtered_results)
                 
         except Exception as e:
             print(f"Erro ao atualizar gráficos: {str(e)}")

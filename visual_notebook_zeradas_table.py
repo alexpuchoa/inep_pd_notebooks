@@ -25,16 +25,30 @@ class LostValuesTableVisualization:
     """Visualização tabular para contagem de valores perdidos."""
     
     def __init__(self, data_path):
-        """Initialize the visualization interface with CSV data."""
+        """Initialize the visualization."""
+        print("Carregando App")
+        
+        # Load data
+        print("Loading data...")
+        self.load_data(data_path)
+        
+        # Create widgets
+        print("Creating widgets:")
+        self._create_widgets()
+        
+        # Display interface
+        self.display_interface()
+        
+        # Update table with initial values
+        self.update_table()
+
+    def load_data(self, data_path):
+        """Load data from CSV files."""
         try:
-            print("Carregando App")
-            
-            # Load data first
             self.data_path = Path(data_path)
             csv_path = self.data_path / "dp_results_stats_bq.csv"
             queries_file = self.data_path / "queries_formatadas_bq.csv"
             
-            print("Loading data...")
             print(f"Reading CSV from: {data_path}")
             
             # Load data in chunks
@@ -70,20 +84,10 @@ class LostValuesTableVisualization:
             self.aggregation_options = [agg for agg in self.ordered_aggregations 
                                       if agg in self.df['aggregated_data'].str.upper().unique()]
             
-            # Create widgets
-            print("\nCreating widgets:")
-            self._create_widgets()
-            
-            # Display interface
-            self.display_interface()
-            
-            print("Initialization complete!")
-            
         except Exception as e:
-            print(f"Error in initialization: {str(e)}")
+            print(f"Error in loading data: {str(e)}")
             print(traceback.format_exc())
 
-   
     def _create_segmentation_map(self):
         """Create mapping of segmentation options for each aggregation."""
         self.segmentation_map = {}
@@ -111,40 +115,77 @@ class LostValuesTableVisualization:
     
     def _create_widgets(self):
         """Create the control widgets."""
-        # Aggregation type dropdown
-        self.aggregation_dropdown = widgets.Dropdown(
-            options=self.aggregation_options,
-            value=self.aggregation_options[0],
-            description='Agregação:'
-        )
-        
-        # Hierarchical level dropdown
-        self.hierarchy_dropdown = widgets.Dropdown(
-            options=self.hierarchy_levels,
-            value=self.hierarchy_levels[0],
-            description='Nível:'
-        )
-        
-        # Segmentation dropdowns
-        self.segment2_dropdown = widgets.Dropdown(
-            options=['Todas'],
-            value='Todas',
-            description='Segm. 2:'
-        )
-        
-        self.segment3_dropdown = widgets.Dropdown(
-            options=['Todas'],
-            value='Todas',
-            description='Segm. 3:'
-        )
-        
-        # Update button
-        self.submit_button = widgets.Button(
-            description='Atualizar Tabela',
-            button_style='primary',
-            tooltip='Clique para atualizar a tabela com as seleções atuais'
-        )
-    
+        try:
+            print("Creating widgets:")
+            
+            # Aggregation type dropdown
+            self.aggregation_dropdown = widgets.Dropdown(
+                options=self.aggregation_options,
+                value=self.aggregation_options[0],
+                description='Agregação:'
+            )
+            
+            # Hierarchical level dropdown
+            self.hierarchy_dropdown = widgets.Dropdown(
+                options=self.hierarchy_levels,
+                value=self.hierarchy_levels[0],
+                description='Nível:'
+            )
+            '''
+            # Segmentation dropdowns
+            self.segment2_dropdown = widgets.Dropdown(
+                options=['Todas'],
+                value='Todas',
+                description='Segm. 2:'
+            )
+            
+            self.segment3_dropdown = widgets.Dropdown(
+                options=['Todas'],
+                value='Todas',
+                description='Segm. 3:'
+            )
+            '''
+            self.region_dropdown = widgets.Dropdown(
+                options=['Todas'],
+                value='Todas',
+                description='Região:'
+            )
+            
+            self.uf_dropdown = widgets.Dropdown(
+                options=['Todas'],
+                value='Todas',
+                description='UF:'
+            )
+            
+            self.mun_dropdown = widgets.Dropdown(
+                options=['Todas'],
+                value='Todas',
+                description='Município:'
+            )
+
+            # Update button
+            self.submit_button = widgets.Button(
+                description='Atualizar Tabela',
+                button_style='primary',
+                tooltip='Clique para atualizar a tabela com as seleções atuais'
+            )
+            
+            print("- Creating table output...")
+            self.table_output = widgets.Output(
+                layout=widgets.Layout(
+                    height='800px',
+                    width='100%',
+                    border='1px solid #ddd',
+                    overflow='auto'
+                )
+            )
+            
+            print("All widgets created successfully!")
+            
+        except Exception as e:
+            print(f"Error creating widgets: {str(e)}")
+            print(traceback.format_exc())
+
     def _create_interface(self):
         """Create the interface container."""
         title = widgets.HTML(
@@ -157,15 +198,15 @@ class LostValuesTableVisualization:
             widgets.HBox([self.aggregation_dropdown, self.hierarchy_dropdown])
         ])
         
-        segmentation_controls = widgets.VBox([
-            widgets.HTML("<b>Segmentações</b>"),
-            widgets.HBox([self.segment2_dropdown, self.segment3_dropdown])
+        filters_controls = widgets.VBox([
+            widgets.HTML("<b>Filtros Geográficos</b>"),
+            widgets.HBox([self.region_dropdown, self.uf_dropdown, self.mun_dropdown])
         ])
         
         return widgets.VBox([
             title,
             query_controls,
-            segmentation_controls,
+            filters_controls,
             self.submit_button
         ], layout=widgets.Layout(
             padding='20px',
@@ -179,14 +220,20 @@ class LostValuesTableVisualization:
         self.submit_button.on_click(self.update_table)
         self.aggregation_dropdown.observe(self._update_segmentation_options, names='value')
 
+        # Update geographic filters
+        self.region_dropdown.observe(self._update_ufs, names='value')
+        self.uf_dropdown.observe(self._update_municipios, names='value')
+
+
     def update_table(self, button_clicked=None):
         """Update the table with current selections."""
         try:
             # Get current selections
             aggregation = self.aggregation_dropdown.value
             hierarchy = self.hierarchy_dropdown.value
-            seg2 = self.segment2_dropdown.value
-            seg3 = self.segment3_dropdown.value
+            region = self.region_dropdown.value
+            uf = self.uf_dropdown.value
+            mun = self.mun_dropdown.value
             
             # Base filter for aggregation
             filtered_df = self.df[
@@ -197,31 +244,58 @@ class LostValuesTableVisualization:
             if hierarchy == 'NO_REGIAO':
                 filtered_df = filtered_df[filtered_df['group_by_col1'].str.upper() == 'SG_UF']
                 group_col = 'parent_regiao'
+                if region != 'Todas':
+                    filtered_df = filtered_df[filtered_df['parent_regiao'] == region]
+
+                table_header = 'Total de UFs'
+                groupby_entity = 'Região'
                 
             elif hierarchy == 'SG_UF':
                 filtered_df = filtered_df[filtered_df['group_by_col1'].str.upper() == 'NO_MUNICIPIO']
                 group_col = 'parent_uf'
-                if seg2 != 'Todas':
-                    filtered_df = filtered_df[filtered_df['parent_regiao'] == seg2]
+                if region != 'Todas':
+                    filtered_df = filtered_df[filtered_df['parent_regiao'] == region]
+                if uf != 'Todas':
+                    filtered_df = filtered_df[filtered_df['parent_uf'] == uf]
+                
+                table_header = 'Total de Municípios'
+                groupby_entity = 'UF'
                 
             elif hierarchy == 'NO_MUNICIPIO':
                 filtered_df = filtered_df[filtered_df['group_by_col1'].str.upper() == 'CO_ENTIDADE']
                 group_col = 'parent_municipio'
-                if seg2 != 'Todas':
-                    filtered_df = filtered_df[filtered_df['parent_uf'] == seg2]
-                
+                if region != 'Todas':
+                    filtered_df = filtered_df[filtered_df['parent_regiao'] == region]
+                if uf != 'Todas':
+                    filtered_df = filtered_df[filtered_df['parent_uf'] == uf]
+                if mun != 'Todas':
+                    filtered_df = filtered_df[filtered_df['parent_municipio'] == mun]
+
+                table_header = 'Total de Escolas'
+                groupby_entity = 'Município' 
+                               
             elif hierarchy == 'CO_ENTIDADE':
                 filtered_df = filtered_df[filtered_df['group_by_col1'].str.upper() == 'CO_ENTIDADE']
                 group_col = 'parent_municipio'
-                if seg2 != 'Todas':
-                    filtered_df = filtered_df[filtered_df['parent_municipio'] == seg2]
+                if region != 'Todas':
+                    filtered_df = filtered_df[filtered_df['parent_regiao'] == region]
+                if uf != 'Todas':
+                    filtered_df = filtered_df[filtered_df['parent_uf'] == uf]
+                if mun != 'Todas':
+                    filtered_df = filtered_df[filtered_df['parent_municipio'] == mun]
+
+                table_header = 'Total de Escolas'
+                groupby_entity = 'Município'
             
-            # Get unique epsilon-delta combinations
-            eps_delta_combinations = filtered_df[['epsilon', 'delta']].drop_duplicates()
+            # Get unique epsilon-delta combinations, ordered
+            eps_delta_combinations = filtered_df[['epsilon', 'delta']].drop_duplicates().sort_values(
+                ['epsilon', 'delta'],
+                ascending=[True, True]
+            )
             
             # Create base table with total entities
             base_table = filtered_df.groupby(group_col)['group_by_val1'].nunique().reset_index()
-            base_table.columns = [group_col, 'Total Entidades']
+            base_table.columns = [group_col, table_header]
             
             # For each epsilon-delta combination, calculate lost entities
             for _, row in eps_delta_combinations.iterrows():
@@ -235,20 +309,27 @@ class LostValuesTableVisualization:
                 
                 # Count lost entities for this combination
                 lost_counts = combo_df.groupby(group_col).agg({
-                    'dp_avg': lambda x: ((x == 0.0) | x.isna() | (combo_df['lost'] > 0)).sum()
+                    'group_by_val1': lambda g: g[
+                        (combo_df['dp_avg'] == 0.0) | 
+                        combo_df['dp_avg'].isna() | 
+                        (combo_df['lost'] > 0)
+                    ].nunique()
                 }).reset_index()
                 
                 # Add to base table
-                col_name = f'Perdidos (ε={eps}, δ={delta})'
+                col_name = f'{table_header.split(" ")[1]} Perdidos (ε={eps}, δ={delta})'
                 base_table = base_table.merge(
                     lost_counts,
                     on=group_col,
                     how='left'
                 )
-                base_table = base_table.rename(columns={'dp_avg': col_name})
+                base_table = base_table.rename(columns={'group_by_val1': col_name})
             
             # Rename the entity column for display
-            base_table = base_table.rename(columns={group_col: 'Entidade'})
+            base_table = base_table.rename(columns={group_col: groupby_entity})
+            
+            # Sort by Total Entidades in descending order
+            base_table = base_table.sort_values(table_header, ascending=False)
             
             # Display table
             with self.table_output:
@@ -276,16 +357,18 @@ class LostValuesTableVisualization:
                 widgets.HBox([self.aggregation_dropdown, self.hierarchy_dropdown])
             ])
             
-            segmentation_section = widgets.VBox([
-                widgets.HTML("<b>Segmentações</b>"),
-                widgets.HBox([self.segment2_dropdown, self.segment3_dropdown])
+            filters_section = widgets.VBox([
+                widgets.HTML("<b>Filtros Geográficos</b>"),
+                widgets.HBox([self.region_dropdown, self.uf_dropdown, self.mun_dropdown])
             ])
+
+
             
             # Create main container
             main_container = widgets.VBox([
                 title_section,
                 query_section,
-                segmentation_section,
+                filters_section,
                 self.submit_button,
                 self.table_output
             ], layout=widgets.Layout(
@@ -298,9 +381,116 @@ class LostValuesTableVisualization:
             # Display the main container
             display(main_container)
             
+            # Initialize geographic filters
+            self._load_regions()
+            
             # Connect observers
             self._connect_observers()
             
         except Exception as e:
             print(f"Error displaying interface: {str(e)}")
+            print(traceback.format_exc())
+
+    def _update_segmentation_options(self, change):
+        """Update segmentation options based on aggregation selection."""
+        try:
+            # Get current aggregation
+            aggregation = change.new
+            
+            # Filter queries for this aggregation
+            agg_queries = self.queries_config[
+                self.queries_config['aggregated_data'].str.upper() == aggregation.upper()
+            ]
+            
+            # Get unique segmentation values
+            seg2_options = set()
+            seg3_options = set()
+            
+            for group_by in agg_queries['group_by'].dropna():
+                cols = [col.strip() for col in group_by.split(',')]
+                if len(cols) > 1:
+                    seg2_options.add(cols[1])
+                if len(cols) > 2:
+                    seg3_options.add(cols[2])
+            
+            # Update dropdown options
+            self.segment2_dropdown.options = sorted(seg2_options | {'Todas'})
+            self.segment3_dropdown.options = sorted(seg3_options | {'Todas'})
+            
+        except Exception as e:
+            print(f"Error updating segmentation options: {str(e)}")
             print(traceback.format_exc()) 
+
+    def _update_ufs(self, change):
+        """Handler para mudanças na região"""
+        try:
+            if change.new == 'Todas':
+                self.uf_dropdown.options = ['Todas']
+            else:
+                # Debug print the data for this region
+                mask = self.df['parent_regiao'].str.upper() == change.new.upper()
+                
+                # Get UFs for selected region from dataframe
+                ufs = ['Todas'] + sorted([uf for uf in self.df[mask]['parent_uf'].unique() if pd.notna(uf)])
+                
+                self.uf_dropdown.options = ufs
+            
+            self.uf_dropdown.value = 'Todas'
+            self.mun_dropdown.options = ['Todas']
+            self.mun_dropdown.value = 'Todas'
+            
+        except Exception as e:
+            print(f"Error in region change handler: {str(e)}")
+            print(traceback.format_exc())
+
+    def _update_municipios(self, change):
+        """Handler para mudanças na UF"""
+        try:
+            if change.new == 'Todas':
+                self.mun_dropdown.options = ['Todas']
+            else:
+                # Debug print the data for this UF
+                mask = (
+                    (self.df['parent_regiao'].str.upper() == self.region_dropdown.value.upper()) &
+                    (self.df['parent_uf'].str.upper() == change.new.upper())
+                )
+                
+                # Get municipalities for selected UF from dataframe
+                municipios = ['Todas'] + sorted([m for m in self.df[mask]['parent_municipio'].unique() if pd.notna(m)])
+                
+                self.mun_dropdown.options = municipios
+            
+            self.mun_dropdown.value = 'Todas'
+            
+        except Exception as e:
+            print(f"Error in UF change handler: {str(e)}")
+            print(traceback.format_exc())
+
+    def _on_mun_change(self, change):
+        """Handler para mudanças no município"""
+        try:
+            print(f"\nMunicípio alterado para: {change.new}")
+        except Exception as e:
+            print(f"Error in municipality change handler: {str(e)}")
+            print(traceback.format_exc())
+
+    def _load_regions(self):
+        """Load initial list of regions from reference CSV"""
+        try:
+            # Get unique regions from the main dataframe, handling NaN values
+            regions = ['Todas'] + sorted([r for r in self.df['parent_regiao'].unique() if pd.notna(r)])
+            
+            # Update region dropdown
+            self.region_dropdown.options = regions
+            self.region_dropdown.value = 'Todas'  # Set initial value
+            
+            # Initialize UF and Municipality dropdowns
+            self.uf_dropdown.options = ['Todas']
+            self.uf_dropdown.value = 'Todas'
+            self.mun_dropdown.options = ['Todas']
+            self.mun_dropdown.value = 'Todas'
+            
+        except Exception as e:
+            print(f"Error loading regions: {str(e)}")
+            print(traceback.format_exc())
+

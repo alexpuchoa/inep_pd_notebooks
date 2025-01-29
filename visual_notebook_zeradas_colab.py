@@ -105,7 +105,6 @@ class LostValuesVisualizationColab:
                 description='Segm. 3:'
             )
             
-            print("- Creating geographic filters...")
             self.region_dropdown = widgets.Dropdown(
                 options=['Todas'],
                 value='Todas',
@@ -167,8 +166,7 @@ class LostValuesVisualizationColab:
                 widgets.HTML("<h2>Visualização de Valores Perdidos</h2>"),
                 widgets.HTML("<p>NIVEL - Como os dados zerados do nivel hierárquico logo abaixo serão agregados. Ex.: Nivel = SG_UF, dados de MUNICIPIOS zerados são agregados por UF.</p>"),
                 widgets.HTML("<p>SEGMENTAÇÕES 2 e 3 - Somente disponível para NIVEL = NO_REGIAO.</p>"),
-                widgets.HTML("<p>FILTRO GEOGRÁFICO - Seleção obrigatória se NIVEL <> NO_REGIAO. Se NIVEL = SG_UF, uma Região deve ser selecionada. Se NIVEL = CO_ENTIDADE, um Município deve ser selecionado.</p>"),
-                widgets.HTML("<h4>Faça uma seleção e aguarde alguns instantes para obter resultado</h4>")
+                widgets.HTML("<p>FILTRO GEOGRÁFICO - Seleção obrigatória se NIVEL <> NO_REGIAO. Se NIVEL = SG_UF, uma Região deve ser selecionada. Se NIVEL = CO_ENTIDADE, um Município deve ser selecionado.</p>")
             ])
            
             query_section = widgets.VBox([
@@ -195,10 +193,11 @@ class LostValuesVisualizationColab:
             main_container = widgets.VBox([
                 title_section,
                 query_section,
-                segmentation_section,
+                #segmentation_section,
                 dp_params_section,
                 geo_filters_section,
                 self.submit_button,
+                widgets.HTML("<h4>Aguarde o processamento. Pode levar alguns instantes...</h4>"),
                 widgets.HTML("<h3>Gráficos:</h3>"),
                 self.plots_output
             ], layout=widgets.Layout(
@@ -229,8 +228,8 @@ class LostValuesVisualizationColab:
             # Get current selections
             aggregation = self.aggregation_dropdown.value
             hierarchy = self.hierarchy_dropdown.value
-            seg2 = self.segment2_dropdown.value
-            seg3 = self.segment3_dropdown.value
+            #seg2 = self.segment2_dropdown.value
+            #seg3 = self.segment3_dropdown.value
             epsilon = self.epsilon_dropdown.value
             delta = self.delta_dropdown.value
             region = self.region_dropdown.value
@@ -262,6 +261,8 @@ class LostValuesVisualizationColab:
                     'dp_avg': lambda x: ((x == 0.0) | x.isna() | (filtered_df['lost'] > 0)).sum()
                 }).reset_index()
 
+                instance_type = 'UFs'
+
             elif hierarchy == 'SG_UF':
                 filtered_df = filtered_df[filtered_df['group_by_col1'].str.upper() == 'NO_MUNICIPIO']
                 if region != 'Todas':
@@ -276,6 +277,8 @@ class LostValuesVisualizationColab:
                     # Count rows where dp_avg is 0 or NULL or lost > 0
                     'dp_avg': lambda x: ((x == 0.0) | x.isna() | (filtered_df['lost'] > 0)).sum()
                 }).reset_index()
+
+                instance_type = 'Municípios'
 
             elif hierarchy == 'NO_MUNICIPIO':
                 filtered_df = filtered_df[filtered_df['group_by_col1'].str.upper() == 'CO_ENTIDADE']
@@ -292,6 +295,8 @@ class LostValuesVisualizationColab:
                     'dp_avg': lambda x: ((x == 0.0) | x.isna() | (filtered_df['lost'] > 0)).sum()
                 }).reset_index()
 
+                instance_type = 'Escolas'
+
             elif hierarchy == 'CO_ENTIDADE':
                 filtered_df = filtered_df[filtered_df['group_by_col1'].str.upper() == 'CO_ENTIDADE']
                 if mun != 'Todas':
@@ -304,6 +309,8 @@ class LostValuesVisualizationColab:
                     # Count rows where dp_avg is 0 or NULL or lost > 0
                     'dp_avg': lambda x: ((x == 0.0) | x.isna() | (filtered_df['lost'] > 0)).sum()
                 }).reset_index()
+
+                instance_type = 'Escolas'
 
             # Rename columns consistently
             df_plot.columns = ['group_by_val1', 'total_entities', 'lost_entities']
@@ -324,7 +331,7 @@ class LostValuesVisualizationColab:
             fig.add_trace(go.Bar(
                 x=df_plot['group_by_val1'],
                 y=df_plot['lost_entities'],
-                name='Total Perdidos',
+                name='Total Perdido',
                 text=df_plot['lost_entities'].round(0),
                 textposition='auto',
             ))
@@ -333,7 +340,7 @@ class LostValuesVisualizationColab:
             fig.add_trace(go.Scatter(
                 x=df_plot['group_by_val1'],
                 y=df_plot['percentage'],
-                name='Percentual',
+                name='Percentual Perdido',
                 text=df_plot['percentage'].round(2),
                 textposition='top center',
                 yaxis='y2',
@@ -343,9 +350,9 @@ class LostValuesVisualizationColab:
 
             # Update layout with secondary y-axis
             fig.update_layout(
-                title=f'Valores Perdidos por {hierarchy}',
+                title=f'Instâncias Perdidas por {hierarchy}',
                 xaxis_title=hierarchy,
-                yaxis_title='Total de Entidades Perdidas',
+                yaxis_title=f'Qtde {instance_type} Perdidos',
                 yaxis2=dict(
                     title='Percentual (%)',
                     overlaying='y',
@@ -380,7 +387,7 @@ class LostValuesVisualizationColab:
             self.submit_button.on_click(self.update_plot)
             
             # Update segmentation options when aggregation changes
-            self.aggregation_dropdown.observe(self._update_segmentation_options, names='value')
+            #self.aggregation_dropdown.observe(self._update_segmentation_options, names='value')
             
             # Update geographic filters
             self.region_dropdown.observe(self._update_ufs, names='value')
@@ -406,11 +413,11 @@ class LostValuesVisualizationColab:
             if current_level not in self.hierarchy_levels:
                 self.hierarchy_dropdown.value = self.hierarchy_levels[0]
             
-            self.segment2_dropdown.options = ['Todas']
+            #self.segment2_dropdown.options = ['Todas']
             self.segment2_dropdown.value = 'Todas'
             
-            self.segment3_dropdown.options = ['Todas']
-            self.segment3_dropdown.value = 'Todas'
+            #self.segment3_dropdown.options = ['Todas']
+            #self.segment3_dropdown.value = 'Todas'
             
         except Exception as e:
             print(f"Error in aggregation change handler: {str(e)}")

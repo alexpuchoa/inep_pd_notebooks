@@ -33,7 +33,7 @@ class LostValuesTableVisualization:
         self.load_data(data_path)
         
         # Create widgets
-        #print("Creating widgets:")
+        print("Creating widgets:")
         self._create_widgets()
         
         # Display interface
@@ -49,7 +49,7 @@ class LostValuesTableVisualization:
             csv_path = self.data_path / "dp_results_stats_bq.csv"
             queries_file = self.data_path / "queries_formatadas_bq.csv"
             
-            #print(f"Reading CSV from: {data_path}")
+            print(f"Reading CSV from: {data_path}")
             
             # Load data in chunks
             chunks = []
@@ -70,13 +70,13 @@ class LostValuesTableVisualization:
             )):
                 chunks.append(chunk)
             
-            #print("Concatenating chunks...")
+            print("Concatenating chunks...")
             self.df = pd.concat(chunks, ignore_index=True)
             print(f"Data loaded successfully. Shape: {self.df.shape}")
             
             # Load queries configuration
             self.queries_config = pd.read_csv(queries_file, sep=';')
-            #print(f"Queries loaded. Shape: {self.queries_config.shape}")
+            print(f"Queries loaded. Shape: {self.queries_config.shape}")
             
             # Setup basic configurations
             self.hierarchy_levels = ['NO_REGIAO', 'SG_UF', 'NO_MUNICIPIO', 'CO_ENTIDADE']
@@ -116,7 +116,7 @@ class LostValuesTableVisualization:
     def _create_widgets(self):
         """Create the control widgets."""
         try:
-            #print("Creating widgets:")
+            print("Creating widgets:")
             
             # Aggregation type dropdown
             self.aggregation_dropdown = widgets.Dropdown(
@@ -170,7 +170,7 @@ class LostValuesTableVisualization:
                 tooltip='Clique para atualizar a tabela com as seleções atuais'
             )
             
-            #print("- Creating table output...")
+            print("- Creating table output...")
             self.table_output = widgets.Output(
                 layout=widgets.Layout(
                     height='800px',
@@ -180,7 +180,7 @@ class LostValuesTableVisualization:
                 )
             )
             
-            #print("All widgets created successfully!")
+            print("All widgets created successfully!")
             
         except Exception as e:
             print(f"Error creating widgets: {str(e)}")
@@ -294,9 +294,7 @@ class LostValuesTableVisualization:
             )
             
             # Create base table with total entities
-            base_table = filtered_df.groupby(group_col).agg({
-                'group_by_val1': 'nunique',  # Count unique entities
-            }).reset_index()
+            base_table = filtered_df.groupby(group_col)['group_by_val1'].nunique().reset_index()
             base_table.columns = [group_col, table_header]
             
             # For each epsilon-delta combination, calculate lost entities
@@ -309,43 +307,23 @@ class LostValuesTableVisualization:
                     (filtered_df['delta'] == delta)
                 ]
                 
-                # Count lost entities and get median original value for lost ones
+                # Count lost entities for this combination
                 lost_counts = combo_df.groupby(group_col).agg({
                     'group_by_val1': lambda g: g[
-                        (combo_df.loc[g.index, 'dp_avg'] == 0.0) | 
-                        combo_df.loc[g.index, 'dp_avg'].isna() | 
-                        (combo_df.loc[g.index, 'lost'] > 0)
-                    ].nunique(),
-                    'original_value': lambda g: combo_df.loc[
-                        g.index,
-                        'original_value'
-                    ][
-                        (combo_df.loc[g.index, 'dp_avg'] == 0.0) | 
-                        combo_df.loc[g.index, 'dp_avg'].isna() | 
-                        (combo_df.loc[g.index, 'lost'] > 0)
-                    ].median()
+                        (combo_df['dp_avg'] == 0.0) | 
+                        combo_df['dp_avg'].isna() | 
+                        (combo_df['lost'] > 0)
+                    ].nunique()
                 }).reset_index()
                 
                 # Add to base table
-                entidades_perdidas = table_header.split(" ")[2]
-                col_name = f'{entidades_perdidas} Perdidas (ε={eps}, δ={delta})'
-                val_name = 'Mediana Alunos'
+                col_name = f'{table_header.split(" ")[2]} Perdidos (ε={eps}, δ={delta})'
                 base_table = base_table.merge(
                     lost_counts,
                     on=group_col,
                     how='left'
                 )
-                base_table = base_table.rename(columns={
-                    'group_by_val1': col_name,
-                    'original_value': val_name
-                })
-                
-                # Calculate and format percentage
-                base_table[col_name] = base_table.apply(
-                    lambda row: f"{int(row[col_name])} ({(row[col_name]/row[table_header]*100):.1f}%)" 
-                    if pd.notna(row[col_name]) else "0 (0.0%)",
-                    axis=1
-                )
+                base_table = base_table.rename(columns={'group_by_val1': col_name})
             
             # Rename the entity column for display
             base_table = base_table.rename(columns={group_col: groupby_entity})

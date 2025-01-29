@@ -163,7 +163,7 @@ class LostValuesVisualizationColab:
             
             # Create containers for each section
             title_section = widgets.VBox([
-                widgets.HTML("<h2>Gráfico de Instâncias Perdidas</h2>"),
+                widgets.HTML("<h2>Visualização de Valores Perdidos</h2>"),
                 widgets.HTML("<p>NIVEL - Como os dados zerados do nivel hierárquico logo abaixo serão agregados. Ex.: Nivel = SG_UF, dados de MUNICIPIOS zerados são agregados por UF.</p>"),
                 widgets.HTML("<p>SEGMENTAÇÕES 2 e 3 - Somente disponível para NIVEL = NO_REGIAO.</p>"),
                 widgets.HTML("<p>FILTRO GEOGRÁFICO - Seleção obrigatória se NIVEL <> NO_REGIAO. Se NIVEL = SG_UF, uma Região deve ser selecionada. Se NIVEL = CO_ENTIDADE, um Município deve ser selecionado.</p>")

@@ -334,6 +334,17 @@ class LostValuesVisualizationColab:
                 name='Total Perdido',
                 text=df_plot['lost_entities'].round(0),
                 textposition='auto',
+                hovertemplate=(
+                    "<b>%{x}</b><br>" +
+                    "Total de Entidades: %{customdata[0]:.0f}<br>" +
+                    "Entidades Perdidas: %{y:.0f}<br>" +
+                    "Percentual: %{customdata[1]:.1f}%<br>" +
+                    "<extra></extra>"
+                ),
+                customdata=np.stack((
+                    df_plot['total_entities'],
+                    df_plot['percentage']
+                ), axis=1)
             ))
 
             # Add line plot for percentages (secondary y-axis)
@@ -345,7 +356,18 @@ class LostValuesVisualizationColab:
                 textposition='top center',
                 yaxis='y2',
                 mode='lines+markers',
-                line=dict(color='red')
+                line=dict(color='red'),
+                hovertemplate=(
+                    "<b>%{x}</b><br>" +
+                    "Total de Entidades: %{customdata[0]:.0f}<br>" +
+                    "Entidades Perdidas: %{customdata[1]:.0f}<br>" +
+                    "Percentual: %{y:.1f}%<br>" +
+                    "<extra></extra>"
+                ),
+                customdata=np.stack((
+                    df_plot['total_entities'],
+                    df_plot['lost_entities']
+                ), axis=1)
             ))
 
             # Update layout with secondary y-axis

@@ -370,7 +370,9 @@ class LostValuesTableVisualization:
                     lost_counts.rename(columns={'group_by_val1': 'lost_count'}, inplace=True)
                 
                 # Add to base table
-                col_name = f'Perdidos (ε={eps}, δ={delta})'
+                lost_col = f'Perdidos (ε={eps}, δ={delta})'
+                median_col = f'Mediana (ε={eps}, δ={delta})'
+                
                 base_table = base_table.merge(
                     lost_counts,
                     on=grouping_col,
@@ -378,10 +380,15 @@ class LostValuesTableVisualization:
                 )
                 
                 # Calculate and format percentage
-                base_table[col_name] = base_table.apply(
+                base_table[lost_col] = base_table.apply(
                     lambda row: f"{int(row['lost_count'])} ({(row['lost_count']/row[total_col]*100):.1f}%)" 
                     if pd.notna(row['lost_count']) else "0 (0.0%)",
                     axis=1
+                )
+                
+                # Add median column for this combination
+                base_table[median_col] = base_table['original_value'].apply(
+                    lambda x: f"{x:.1f}" if pd.notna(x) else "-"
                 )
                 
                 # Drop temporary columns

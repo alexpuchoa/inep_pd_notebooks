@@ -371,7 +371,7 @@ class LostValuesTableVisualization:
                 
                 # Add to base table
                 lost_col = f'Perdidos (ε={eps}, δ={delta})'
-                median_col = f'Mediana (ε={eps}, δ={delta})'
+                median_col = f'Mediana {aggregation.lower().replace("_", " ")}'
                 
                 base_table = base_table.merge(
                     lost_counts,

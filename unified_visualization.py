@@ -59,7 +59,7 @@ class UnifiedVisualization:
     def show_v2(self):
         """Display the main visualization"""
         if self.viz_v2 is None:
-            self.viz_v2 = VisualizationNotebook(data=self.data, queries_config=self.queries_config)
+            self.viz_v2 = VisualizationNotebook(data=self.data, queries_config=self.queries_config, data_path=self.data_path)
     
     def show_table(self):
         """Display the table visualization"""

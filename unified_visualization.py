@@ -1,8 +1,8 @@
 import pandas as pd
 from pathlib import Path
-from .visual_notebook_v2 import VisualizationNotebook
-from .visual_notebook_colab_table import TableVisualization
-from .visual_notebook_zeradas_colab import LostValuesVisualizationColab
+from visual_notebook_v2 import VisualizationNotebook
+from visual_notebook_zeradas_table import TableVisualization
+from visual_notebook_zeradas_colab import LostValuesVisualizationColab
 
 class UnifiedVisualization:
     """Class that combines all three visualization types"""
@@ -44,15 +44,29 @@ class UnifiedVisualization:
             # Load queries configuration
             self.queries_config = pd.read_csv(queries_file, sep=';')
             
-            # Initialize visualizations with shared data
-            print("Initializing visualizations...")
-            self.viz_v2 = VisualizationNotebook(data=self.data, queries_config=self.queries_config)
-            self.viz_table = TableVisualization(data=self.data, queries_config=self.queries_config)
-            self.viz_zeradas = LostValuesVisualizationColab(data=self.data, queries_config=self.queries_config)
+            # Create visualization instances but don't display them yet
+            self.viz_v2 = None
+            self.viz_table = None
+            self.viz_zeradas = None
             
             print("Unified Visualization ready!")
             
         except Exception as e:
             print(f"Error in UnifiedVisualization initialization: {str(e)}")
             import traceback
-            print(traceback.format_exc()) 
+            print(traceback.format_exc())
+    
+    def show_v2(self):
+        """Display the main visualization"""
+        if self.viz_v2 is None:
+            self.viz_v2 = VisualizationNotebook(data=self.data, queries_config=self.queries_config)
+    
+    def show_table(self):
+        """Display the table visualization"""
+        if self.viz_table is None:
+            self.viz_table = TableVisualization(data=self.data, queries_config=self.queries_config)
+    
+    def show_zeradas(self):
+        """Display the lost values visualization"""
+        if self.viz_zeradas is None:
+            self.viz_zeradas = LostValuesVisualizationColab(data=self.data, queries_config=self.queries_config) 

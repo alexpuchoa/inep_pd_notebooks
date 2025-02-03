@@ -27,13 +27,23 @@ class TableVisualization:
     def __init__(self, data=None, queries_config=None, data_path=None):
         """Initialize with provided data or from CSV."""
         try:
-            print("Carregando App")
+            # Create debug output widget first
+            self.debug_output = widgets.Output()
+            display(self.debug_output)
+            
+            with self.debug_output:
+                print("Carregando App")
+            
+            # Setup basic configurations first
+            self.hierarchy_levels = ['NO_REGIAO', 'SG_UF', 'NO_MUNICIPIO', 'CO_ENTIDADE']
+            self.ordered_aggregations = ['QT_ALUNOS', 'MEDIA_NOTA', 'SOMA_NOTAS']
             
             if data is not None and queries_config is not None:
                 # Use provided data
                 self.df = data
                 self.queries_config = queries_config
-                print(f"Using provided data. Shape: {self.df.shape}")
+                with self.debug_output:
+                    print(f"Using provided data. Shape: {self.df.shape}")
             
             elif data_path:
                 # Load data from files
@@ -41,8 +51,9 @@ class TableVisualization:
                 csv_path = self.data_path / "dp_results_stats_bq.csv"
                 queries_file = self.data_path / "queries_formatadas_bq.csv"
                 
-                print("Loading data...")
-                print(f"Reading CSV from: {data_path}")
+                with self.debug_output:
+                    print("Loading data...")
+                    print(f"Reading CSV from: {data_path}")
                 
                 # Load data in chunks
                 chunks = []
@@ -63,56 +74,40 @@ class TableVisualization:
                     chunks.append(chunk)
                 
                 self.df = pd.concat(chunks, ignore_index=True)
-                print(f"Data loaded successfully. Shape: {self.df.shape}")
+                with self.debug_output:
+                    print(f"Data loaded successfully. Shape: {self.df.shape}")
                 
                 # Load queries configuration
                 self.queries_config = pd.read_csv(queries_file, sep=';')
             
             else:
                 raise ValueError("Either data and queries_config or data_path must be provided")
+
+            # Set aggregation options after data is loaded
+            self.aggregation_options = [agg for agg in self.ordered_aggregations 
+                                      if agg in self.df['aggregated_data'].str.upper().unique()]
             
+            with self.debug_output:
+                print("Creating widgets...")
             # Create widgets
             self._create_widgets()
             
+            with self.debug_output:
+                print("Displaying interface...")
             # Display interface
             self.display_interface()
             
-            print("Initialization complete!")
+            with self.debug_output:
+                print("Initialization complete!")
             
         except Exception as e:
-            print(f"Error in initialization: {str(e)}")
-            print(traceback.format_exc())
+            with self.debug_output:
+                print(f"Error in initialization: {str(e)}")
+                print(traceback.format_exc())
 
-    def _create_segmentation_map(self):
-        """Create mapping of segmentation options for each aggregation."""
-        self.segmentation_map = {}
-        for agg in self.aggregation_options:
-            agg_queries = self.queries_config[self.queries_config['aggregated_data'].str.upper() == agg]
-            group_by_values = agg_queries['group_by'].dropna().unique()
-            
-            seg2_options = set()
-            seg3_options = set()
-            
-            for group_by in group_by_values:
-                if pd.isna(group_by):
-                    continue
-                cols = [col.strip() for col in group_by.split(',')]
-                if len(cols) > 1:
-                    seg2_options.add(cols[1])
-                if len(cols) > 2:
-                    seg3_options.add(cols[2])
-            
-            self.segmentation_map[agg] = {
-                'seg1': self.hierarchy_levels,
-                'seg2': sorted(seg2_options | {'Todas'}),
-                'seg3': sorted(seg3_options | {'Todas'})
-            }
-    
     def _create_widgets(self):
         """Create the control widgets."""
         try:
-            #print("Creating widgets:")
-            
             # Aggregation type dropdown
             self.aggregation_dropdown = widgets.Dropdown(
                 options=self.aggregation_options,
@@ -126,20 +121,8 @@ class TableVisualization:
                 value=self.hierarchy_levels[0],
                 description='Nível:'
             )
-            '''
-            # Segmentation dropdowns
-            self.segment2_dropdown = widgets.Dropdown(
-                options=['Todas'],
-                value='Todas',
-                description='Segm. 2:'
-            )
             
-            self.segment3_dropdown = widgets.Dropdown(
-                options=['Todas'],
-                value='Todas',
-                description='Segm. 3:'
-            )
-            '''
+            # Region, UF, Municipality dropdowns
             self.region_dropdown = widgets.Dropdown(
                 options=['Todas'],
                 value='Todas',
@@ -165,7 +148,7 @@ class TableVisualization:
                 tooltip='Clique para atualizar a tabela com as seleções atuais'
             )
             
-            #print("- Creating table output...")
+            # Table output
             self.table_output = widgets.Output(
                 layout=widgets.Layout(
                     height='800px',
@@ -174,8 +157,6 @@ class TableVisualization:
                     overflow='auto'
                 )
             )
-            
-            #print("All widgets created successfully!")
             
         except Exception as e:
             print(f"Error creating widgets: {str(e)}")
@@ -311,12 +292,7 @@ class TableVisualization:
             
             # Sort by total entities in descending order
             base_table = base_table.sort_values(total_col, ascending=False)
-            '''
-            # Display table
-            with self.table_output:
-                clear_output(wait=True)
-                print("Base table columns:", base_table.columns.tolist())  
-            '''    
+            
             # Get unique epsilon-delta combinations, ordered
             eps_delta_combinations = filtered_df[['epsilon', 'delta']].drop_duplicates().sort_values(
                 ['epsilon', 'delta'],
@@ -401,22 +377,32 @@ class TableVisualization:
     def display_interface(self):
         """Display the interface components."""
         try:
+            with self.debug_output:
+                print("Starting display_interface")
+            
             # Create containers for each section
             title_section = widgets.VBox([
                 widgets.HTML("<h2>Visualização de Valores Perdidos - Tabela</h2>")
             ])
+            
+            with self.debug_output:
+                print("Created title section")
             
             query_section = widgets.VBox([
                 widgets.HTML("<b>Configuração da Query</b>"),
                 widgets.HBox([self.aggregation_dropdown, self.hierarchy_dropdown])
             ])
             
+            with self.debug_output:
+                print("Created query section")
+            
             filters_section = widgets.VBox([
                 widgets.HTML("<b>Filtros Geográficos</b>"),
                 widgets.HBox([self.region_dropdown, self.uf_dropdown, self.mun_dropdown])
             ])
-
-
+            
+            with self.debug_output:
+                print("Created filters section")
             
             # Create main container
             main_container = widgets.VBox([
@@ -432,48 +418,29 @@ class TableVisualization:
                 margin='10px'
             ))
             
+            with self.debug_output:
+                print("Created main container, displaying...")
+            
             # Display the main container
             display(main_container)
             
+            with self.debug_output:
+                print("Loading regions...")
             # Initialize geographic filters
             self._load_regions()
             
+            with self.debug_output:
+                print("Connecting observers...")
             # Connect observers
             self._connect_observers()
             
-        except Exception as e:
-            print(f"Error displaying interface: {str(e)}")
-            print(traceback.format_exc())
-
-    def _update_segmentation_options(self, change):
-        """Update segmentation options based on aggregation selection."""
-        try:
-            # Get current aggregation
-            aggregation = change.new
-            
-            # Filter queries for this aggregation
-            agg_queries = self.queries_config[
-                self.queries_config['aggregated_data'].str.upper() == aggregation.upper()
-            ]
-            
-            # Get unique segmentation values
-            seg2_options = set()
-            seg3_options = set()
-            
-            for group_by in agg_queries['group_by'].dropna():
-                cols = [col.strip() for col in group_by.split(',')]
-                if len(cols) > 1:
-                    seg2_options.add(cols[1])
-                if len(cols) > 2:
-                    seg3_options.add(cols[2])
-            
-            # Update dropdown options
-            self.segment2_dropdown.options = sorted(seg2_options | {'Todas'})
-            self.segment3_dropdown.options = sorted(seg3_options | {'Todas'})
+            with self.debug_output:
+                print("Display interface complete")
             
         except Exception as e:
-            print(f"Error updating segmentation options: {str(e)}")
-            print(traceback.format_exc()) 
+            with self.debug_output:
+                print(f"Error displaying interface: {str(e)}")
+                print(traceback.format_exc())
 
     def _update_ufs(self, change):
         """Handler para mudanças na região"""

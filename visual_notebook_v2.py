@@ -32,38 +32,49 @@ class VisualizationNotebook:
         """
         Inicializa o notebook de visualização.
         """
-        # Create debug output widget first
-        self.debug_output = widgets.Output()
-
-        # Set data paths
-        self.data_path = Path(data_path)
-        self.results_path = self.data_path / "dp_results_stats_bq.csv"
-        self.queries_file = self.data_path / "queries_formatadas_bq.csv"
+        try:
+            print("Carregando App")
+            
+            # Create debug output widget first
+            self.debug_output = widgets.Output()
+            
+            # Set data path
+            self.data_path = Path(data_path)
+            self.results_path = self.data_path / "dp_results_stats_bq.csv"
+            self.queries_file = self.data_path / "queries_formatadas_bq.csv"
  
-        # Load data
-        self._load_data()
-        
-        # Create other widgets and connect observers
-        self._create_widgets()
-        self._connect_observers()
-        
-        # Define the initial aggregation model for the query
-        # Used to set the y-axis title for the bars plot
-        self.query_model_aggregation = {1: 'Soma Alunos', 2: 'Média Nota', 3: 'Soma Nota'}
-        self.selected_model = self.query_model_aggregation[1]
+            # Load data
+            self._load_data()
+            
+            # Create other widgets and connect observers
+            self._create_widgets()
+            
+            # Define the initial aggregation model for the query
+            self.query_model_aggregation = {1: 'Soma Alunos', 2: 'Média Nota', 3: 'Soma Nota'}
+            self.selected_model = self.query_model_aggregation[1]
 
-        self.region_data = None
-        self.uf_by_region = {}
-        self.mun_by_uf = {}
-        
-        with self.debug_output:
-            print("DEBUG: Initializing VisualizationNotebook")
-        
-        # Load region data
-        self._load_region_data()
-        
-        # Connect observers
-        self._connect_observers()
+            self.region_data = None
+            self.uf_by_region = {}
+            self.mun_by_uf = {}
+            
+            with self.debug_output:
+                print("DEBUG: Initializing VisualizationNotebook")
+            
+            # Load region data
+            self._load_region_data()
+            
+            # Connect observers
+            self._connect_observers()
+            
+            # Display interface
+            self.display_stats_chart()
+            
+            print("Initialization complete!")
+            
+        except Exception as e:
+            print(f"Error in initialization: {str(e)}")
+            import traceback
+            print(traceback.format_exc())
 
     def _load_data(self):
         """Load data from CSV files."""

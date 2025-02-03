@@ -377,33 +377,35 @@ class TableVisualization:
     def display_interface(self):
         """Display the interface components."""
         try:
-            with self.debug_output:
-                print("Starting display_interface")
-            
+            #with self.debug_output:
+            #      print("Starting display_interface")
+ 
             # Create containers for each section
             title_section = widgets.VBox([
                 widgets.HTML("<h2>Visualização de Valores Perdidos - Tabela</h2>")
             ])
             
-            with self.debug_output:
-                print("Created title section")
+            #with self.debug_output:
+            #      print("Created title section")
             
             query_section = widgets.VBox([
                 widgets.HTML("<b>Configuração da Query</b>"),
                 widgets.HBox([self.aggregation_dropdown, self.hierarchy_dropdown])
             ])
             
-            with self.debug_output:
-                print("Created query section")
+            #with self.debug_output:
+            #      print("Created query section")
             
+
             filters_section = widgets.VBox([
                 widgets.HTML("<b>Filtros Geográficos</b>"),
                 widgets.HBox([self.region_dropdown, self.uf_dropdown, self.mun_dropdown])
             ])
+
+            #with self.debug_output:
+            #      print("Created filters section")
             
-            with self.debug_output:
-                print("Created filters section")
-            
+
             # Create main container
             main_container = widgets.VBox([
                 title_section,
@@ -418,9 +420,9 @@ class TableVisualization:
                 margin='10px'
             ))
             
-            with self.debug_output:
-                print("Created main container, displaying...")
-            
+            #with self.debug_output:
+            #      print("Created main container, displaying...")
+
             # Display the main container
             display(main_container)
             
@@ -429,14 +431,16 @@ class TableVisualization:
             # Initialize geographic filters
             self._load_regions()
             
-            with self.debug_output:
-                print("Connecting observers...")
+            #with self.debug_output:
+            #      print("Connecting observers...")
+            
             # Connect observers
             self._connect_observers()
             
-            with self.debug_output:
-                print("Display interface complete")
-            
+
+            #with self.debug_output:
+            #      print("Display interface complete")
+
         except Exception as e:
             with self.debug_output:
                 print(f"Error displaying interface: {str(e)}")

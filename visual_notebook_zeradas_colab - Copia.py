@@ -163,7 +163,7 @@ class LostValuesVisualizationColab:
             
             # Create containers for each section
             title_section = widgets.VBox([
-                widgets.HTML("<h2>Visualização de Valores Perdidos</h2>"),
+                widgets.HTML("<h2>Gráfico de Instâncias Perdidas</h2>"),
                 widgets.HTML("<p>NIVEL - Como os dados zerados do nivel hierárquico logo abaixo serão agregados. Ex.: Nivel = SG_UF, dados de MUNICIPIOS zerados são agregados por UF.</p>"),
                 widgets.HTML("<p>SEGMENTAÇÕES 2 e 3 - Somente disponível para NIVEL = NO_REGIAO.</p>"),
                 widgets.HTML("<p>FILTRO GEOGRÁFICO - Seleção obrigatória se NIVEL <> NO_REGIAO. Se NIVEL = SG_UF, uma Região deve ser selecionada. Se NIVEL = CO_ENTIDADE, um Município deve ser selecionado.</p>")
@@ -322,7 +322,12 @@ class LostValuesVisualizationColab:
                 df_plot['lost_entities'] / 
                 df_plot['total_entities'] * 100
             )
-            df_plot['total_lost'] = df_plot['lost_entities']
+            
+            # Add confidence level calculation
+            df_plot['confidence_level'] = (
+                1 - df_plot['lost_entities'] / 
+                df_plot['total_entities']
+            ) * 100
             
             # Create single figure with secondary y-axis
             fig = go.Figure()
@@ -334,6 +339,20 @@ class LostValuesVisualizationColab:
                 name='Total Perdido',
                 text=df_plot['lost_entities'].round(0),
                 textposition='auto',
+                hovertemplate=(
+                    "<b>%{x}</b><br>" +
+                    "Total de Entidades: %{customdata[0]:.0f}<br>" +
+                    "Entidades Perdidas: %{customdata[1]:.0f}<br>" +
+                    "Percentual: %{customdata[2]:.1f}%<br>" +
+                    "Nível de Confiança: %{customdata[3]:.1f}%<br>" +
+                    "<extra></extra>"
+                ),
+                customdata=np.stack((
+                    df_plot['total_entities'],
+                    df_plot['lost_entities'],
+                    df_plot['percentage'],
+                    df_plot['confidence_level']
+                ), axis=1)
             ))
 
             # Add line plot for percentages (secondary y-axis)
@@ -345,7 +364,21 @@ class LostValuesVisualizationColab:
                 textposition='top center',
                 yaxis='y2',
                 mode='lines+markers',
-                line=dict(color='red')
+                line=dict(color='red'),
+                hovertemplate=(
+                    "<b>%{x}</b><br>" +
+                    "Total de Entidades: %{customdata[0]:.0f}<br>" +
+                    "Entidades Perdidas: %{customdata[1]:.0f}<br>" +
+                    "Percentual: %{y:.1f}%<br>" +
+                    "Nível de Confiança: %{customdata[3]:.1f}%<br>" +
+                    "<extra></extra>"
+                ),
+                customdata=np.stack((
+                    df_plot['total_entities'],
+                    df_plot['lost_entities'],
+                    df_plot['percentage'],
+                    df_plot['confidence_level']
+                ), axis=1)
             ))
 
             # Update layout with secondary y-axis

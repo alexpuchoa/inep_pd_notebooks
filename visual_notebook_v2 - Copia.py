@@ -11,12 +11,8 @@ import ipywidgets as widgets
 from IPython.display import display, clear_output
 import pandas as pd
 import numpy as np
-import psycopg2
-import psycopg2.extras
 import logging
-from psycopg2.extras import RealDictCursor
 from pathlib import Path
-import re
 
 # Configure logging
 logging.basicConfig(
@@ -25,19 +21,6 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-DB_PARAMS = {
-    'dbname': 'inep_synthetic_data',
-    'user': 'postgres',
-    'password': '0alxndr7',
-    'host': 'localhost',
-    'port': '5432'
-}
-
-TABLE_NAMES = {
-    'db_results': 'dp_results_bq',
-    'db_no_dp_results': 'no_dp_results_bq',
-    'db_results_stats': 'dp_results_stats_bq'
-}
 
 class VisualizationNotebook:
     """
@@ -45,41 +28,72 @@ class VisualizationNotebook:
     Gerencia a interface interativa e a exibição de gráficos comparativos.
     """
 
-    def __init__(self, conn_params):
+    def __init__(self, data_path):
         """
         Inicializa o notebook de visualização.
         """
-        self.conn_params = conn_params
-        
-        # Create debug output widget first
-        self.debug_output = widgets.Output()
-        
-        # Load query metadata
-        self._load_query_metadata()
-        
-        # Create other widgets and connect observers
-        self._create_widgets()
-        self._connect_observers()
-        
-        # Define the initial aggregation model for the query
-        # Used to set the y-axis title for the bars plot
-        self.query_model_aggregation = {1: 'Soma Alunos', 2: 'Média Nota', 3: 'Soma Nota'}
-        self.selected_model = self.query_model_aggregation[1]
+        try:
+            print("Carregando App")
+            
+            # Create debug output widget first
+            self.debug_output = widgets.Output()
+            
+            # Set data path
+            self.data_path = Path(data_path)
+            self.results_path = self.data_path / "dp_results_stats_bq.csv"
+            self.queries_file = self.data_path / "queries_formatadas_bq.csv"
+ 
+            # Load data
+            self._load_data()
+            
+            # Create other widgets and connect observers
+            self._create_widgets()
+            
+            # Define the initial aggregation model for the query
+            self.query_model_aggregation = {1: 'Soma Alunos', 2: 'Média Nota', 3: 'Soma Nota'}
+            self.selected_model = self.query_model_aggregation[1]
 
-        self.region_data = None
-        self.uf_by_region = {}
-        self.mun_by_uf = {}
-        
-        with self.debug_output:
-            print("DEBUG: Initializing VisualizationNotebook")
-        
-        # Load region data
-        self._load_region_data()
-        
-        # Connect observers
-        self._connect_observers()
+            self.region_data = None
+            self.uf_by_region = {}
+            self.mun_by_uf = {}
+            
+            with self.debug_output:
+                print("DEBUG: Initializing VisualizationNotebook")
+            
+            # Load region data
+            self._load_region_data()
+            
+            # Connect observers
+            self._connect_observers()
+            
+            # Display interface
+            self.display_stats_chart()
+            
+            print("Initialization complete!")
+            
+        except Exception as e:
+            print(f"Error in initialization: {str(e)}")
+            import traceback
+            print(traceback.format_exc())
 
-        
+    def _load_data(self):
+        """Load data from CSV files."""
+        try:
+            # Load results data
+            self.df = pd.read_csv(self.results_path, sep=';', encoding='latin1', low_memory=False)
+            
+            # Load queries configuration
+            self.query_metadata = pd.read_csv(self.queries_file, sep=';')
+
+            with self.debug_output:
+                print(f"Data loaded successfully")
+                print(f"Results shape: {self.df.shape}")
+                print(f"Query metadata shape: {self.query_metadata.shape}")
+                
+        except Exception as e:
+            logger.error(f"Error loading data: {str(e)}")
+            raise
+
     def debug_print(self, message):
         """
         Imprime mensagens de debug no widget de output.
@@ -167,37 +181,19 @@ class VisualizationNotebook:
         """
         try:
             # Title with professional styling
-            title = widgets.HTML(
-                value="""
-                <h2 style='
-                    text-align: center; 
-                    color: #2c3e50;
-                    font-family: Arial, sans-serif;
-                    padding: 15px;
-                    margin: 20px 0;
-                    border-bottom: 2px solid #3498db;
-                '>INEP Data Visualization</h2>
-                """
-            )
+            title = widgets.VBox([
+                widgets.HTML("<h2>Métricas das 25 execuções da PD</h2><h3>Dependendo da seleção, o eixo-x pode não comportar o nome de todas as entidades.</h3>"),
+                #widgets.HTML("<p>Filtros de Granularidade Geográfica - Seleção obrigatória para as queries com maior granularidade (5, 6, 7, 8).</p>")
+            ])
             
-            # Controls section with better organization
-            controls_title = widgets.HTML(
-                value="""
-                <h3 style='
-                    color: #2c3e50;
-                    font-family: Arial, sans-serif;
-                    margin: 15px 0;
-                '>Parameters</h3>
-                """
-            )
-            
+
             # Group controls with labels
             query_controls = widgets.VBox([
-                widgets.HTML("<b>Escolha da query</b>"),
+                widgets.HTML("<b>Tipo e Modelo da Query (ver tabela acima)</b>"),
                 widgets.HBox([
                     self.query_type_slider,
                     self.query_model_dropdown
-                ], layout=widgets.Layout(margin='10px 0'))
+                ])
             ])
             
             parameter_controls = widgets.VBox([
@@ -205,7 +201,7 @@ class VisualizationNotebook:
                 widgets.HBox([
                     self.epsilon_dropdown,
                     self.delta_dropdown
-                ], layout=widgets.Layout(margin='10px 0'))
+                ])
             ])
             
             geographic_controls = widgets.VBox([
@@ -214,7 +210,7 @@ class VisualizationNotebook:
                     self.region_dropdown,
                     self.uf_dropdown,
                     self.mun_dropdown
-                ], layout=widgets.Layout(margin='10px 0'))
+                ])
             ])
             
             stats_control = widgets.VBox([
@@ -222,154 +218,251 @@ class VisualizationNotebook:
                 self.stats_dropdown
             ])
             
-            # Style the submit button
-            self.submit_button.style.button_color = '#3498db'
-            self.submit_button.style.text_color = 'white'
-            self.submit_button.layout = widgets.Layout(
-                width='200px',
-                height='40px',
-                margin='20px auto',
-                border='none',
-                border_radius='5px'
-            )
-            
-            # Debug section with better styling
-            debug_title = widgets.HTML(
-                value="""
-                <h3 style='
-                    color: #2c3e50;
-                    font-family: Arial, sans-serif;
-                    margin: 15px 0;
-                '>Debug Output</h3>
-                """
-            )
-            
-            self.debug_output.layout = widgets.Layout(
-                height='200px',
-                width='100%',
-                margin='10px 0',
-                padding='10px',
-                border='1px solid #bdc3c7',
-                border_radius='5px',
-                overflow_y='auto',
-                background_color='#f9f9f9'
-            )
-            
-            debug_section = widgets.VBox([
-                debug_title,
-                self.debug_output
-            ])
-            
-            # Plots section with styling
-            plots_title = widgets.HTML(
-                value="""
-                <h3 style='
-                    color: #2c3e50;
-                    font-family: Arial, sans-serif;
-                    margin: 15px 0;
-                '>Visualizações</h3>
-                """
-            )
-            
-            # Update plot layouts
-            self.stats_fig_widget.layout.height = 500
-            self.stats_fig_widget.layout.margin = dict(t=20, b=20)
-            self.bars_fig_widget.layout.height = 500
-            self.bars_fig_widget.layout.margin = dict(t=20, b=20)
-            
-            plots_section = widgets.VBox([
-                #plots_title,
-                self.stats_fig_widget,
-                self.bars_fig_widget
-            ])
-            
-            # Main container with professional styling
-            self.stats_container = widgets.VBox([
-                title,
-                controls_title,
+            # Main container with all controls
+            controls = widgets.VBox([
                 query_controls,
                 parameter_controls,
                 geographic_controls,
                 stats_control,
-                self.submit_button,
-                #debug_section,
-                plots_section
-            ], layout=widgets.Layout(
-                padding='20px',
-                width='100%',
-                border='1px solid #e0e0e0',
-                border_radius='10px',
-                margin='10px',
-                background_color='white'
-            ))
+                self.submit_button
+            ])
             
-            # Clear debug output and show welcome message
-            with self.debug_output:
-                clear_output(wait=True)
-                print("Bem-vindo à Visualização dos Resultados da PD com Dados Sintéticos")
-                print("1. Configure os parametros usando os controles acima")
-                print("2. Clique em 'Atualizar Gráficos' para aplicar suas escolhes")
-
+            # Plots container
+            plots = widgets.VBox([
+                self.stats_fig_widget,
+                self.bars_fig_widget
+            ])
+            
+            # Main container
+            self.stats_container = widgets.VBox([
+                title,
+                controls,
+                plots
+            ])
             
             # Display the interface
             display(self.stats_container)
             
             # Initialize empty plots
-            self.stats_fig_widget.data = []
-            self.bars_fig_widget.data = []
+            with self.stats_fig_widget.batch_update():
+                self.stats_fig_widget.data = []
+            with self.bars_fig_widget.batch_update():
+                self.bars_fig_widget.data = []
             
         except Exception as e:
             print(f"Error displaying interface: {str(e)}")
             import traceback
             print(traceback.format_exc())
 
-    def connect_db(self):
-        """Conecta ao banco de dados."""
-        try:
-            conn = psycopg2.connect(**DB_PARAMS)
-            return conn
-        except Exception as e:
-            logger.error(f"Error connecting to database: {str(e)}")
-            raise
+    def _create_widgets(self):
+        """
+        Cria todos os widgets da interface.
+        """
+        # Query type slider
+        self.query_type_slider = widgets.IntSlider(
+            value=1,
+            min=1,
+            max=8,
+            step=1,
+            description='Query Type:',
+            continuous_update=False
+        )
+        
+        # Query model dropdown
+        self.query_model_dropdown = widgets.Dropdown(
+            options=[1, 2, 3],
+            value=1,
+            description='Query Model:'
+        )
+        
+        # Region dropdown
+        self.region_dropdown = widgets.Dropdown(
+            options=['Todas'],
+            value='Todas',
+            description='Região:'
+        )
+        
+        # UF dropdown
+        self.uf_dropdown = widgets.Dropdown(
+            options=['Todas'],
+            value='Todas',
+            description='UF:'
+        )
+        
+        # Municipality dropdown
+        self.mun_dropdown = widgets.Dropdown(
+            options=['Todas'],
+            value='Todas',
+            description='Município:'
+        )
+        
+        # Epsilon dropdown
+        self.epsilon_dropdown = widgets.Dropdown(
+            options=[1.0, 5.0, 10.0],
+            value=1.0,
+            description='Epsilon:'
+        )
+        
+        # Delta dropdown
+        self.delta_dropdown = widgets.Dropdown(
+            options=[1e-5, 1e-2],
+            value=1e-5,
+            description='Delta:'
+        )
+        
+        # Stats dropdown
+        self.stats_dropdown = widgets.Dropdown(
+            options=[
+                ('MAE', 'mae'),
+                ('MAPE', 'mape'),
+                ('Mediana DP', 'dp_median'),
+                ('Desvio Padrão DP', 'dp_stddev'),
+                ('Intervalo de Confiança', 'ci')
+            ],
+            value='mae',
+            description='Estatística:'
+        )
+        
+        # Submit button
+        self.submit_button = widgets.Button(
+            description='Atualizar Gráficos',
+            button_style='primary',
+            tooltip='Clique para atualizar os gráficos com as seleções atuais'
+        )
+        
+        # Debug output with increased height
+        self.debug_output = widgets.Output(
+            layout=widgets.Layout(
+                height='200px',
+                border='1px solid black',
+                overflow_y='auto'
+            )
+        )
+        
+        # Create empty figures with consistent size
+        plot_width = 1000  # Increased width
+        plot_height = 500
+        
+        self.stats_fig_widget = go.FigureWidget(
+            layout=go.Layout(
+                height=plot_height,
+                width=plot_width,
+                margin=dict(t=50, b=100, l=100, r=50)
+            )
+        )
+        
+        self.bars_fig_widget = go.FigureWidget(
+            layout=go.Layout(
+                height=plot_height,
+                width=plot_width,
+                margin=dict(t=50, b=100, l=100, r=50)
+            )
+        )
 
-    def get_query(self, query_type, query_model):
+    def _load_region_data(self):
         """
-        Gera a query SQL baseada no tipo e modelo de consulta.
+        Carrega dados geográficos do arquivo CSV.
         """
-        #print(f"\nDEBUG: Building query for type={query_type}, model={query_model}")
-        
-        query = f"""
-            SELECT 
-                group_by_col1,
-                group_by_col2,
-                group_by_col3,
-                group_by_val1,
-                group_by_val2,
-                group_by_val3,
-                dp_avg,
-                dp_median,
-                dp_stddev,
-                dp_ci_upper - dp_ci_lower as ci,
-                mae,
-                mape,
-                num_runs,
-                original_value
-            FROM {TABLE_NAMES['db_results_stats']}
-            WHERE query_model = %s
-            AND query_type = %s
-            AND epsilon = %s
-            AND delta = %s
-            ORDER BY group_by_val1, group_by_val2, group_by_val3
-        """
-        
-        #print("DEBUG: Generated query:\n", query)
-        return query
+        try:
+            # Get current notebook directory
+            #csv_file_path = self.data_path / "regiao_uf_municipio_escola.csv"
+            self.region_data = pd.read_csv("regiao_uf_municipio_escola.csv", sep=';')
+            
+            # Debug: Show sample of the CSV data
+            self.debug_print("\nSample of CSV data:")
+            self.debug_print("\nColumns:")
+            self.debug_print(self.region_data.columns.tolist())
+            self.debug_print("\nFirst 5 rows:")
+            self.debug_print(self.region_data.head().to_string())
+            
+            # Rest of the function remains the same
+            unique_regions = sorted(self.region_data['NO_REGIAO'].unique())
+            self.region_dropdown.options = ['Todas'] + unique_regions
+            
+            # Prepara os dicionários de relação
+            self.uf_by_region = {}
+            self.mun_by_uf = {}
+            
+            for region in unique_regions:
+                region_data = self.region_data[self.region_data['NO_REGIAO'] == region]
+                self.uf_by_region[region] = sorted(region_data['SG_UF'].unique())
+                
+                for uf in self.uf_by_region[region]:
+                    uf_data = region_data[region_data['SG_UF'] == uf]
+                    self.mun_by_uf[uf] = sorted(uf_data['NO_MUNICIPIO'].unique())
+            
+            # Atualiza UF dropdown com todas as UFs
+            all_ufs = sorted(self.region_data['SG_UF'].unique())
+            self.uf_dropdown.options = ['Todas'] + all_ufs
+            
+            # Build hierarchical relationships from the CSV file
+            self.debug_print("\nBuilding hierarchical relationships from CSV...")
+            region_to_ufs = {}
+            uf_to_muns = {}
+            mun_to_schools = {}
+            
+            # First pass: Build all relationships from CSV
+            for _, row in self.region_data.iterrows():
+                # Force uppercase for all fields
+                region = row['NO_REGIAO'].strip().upper()
+                uf = row['SG_UF'].strip().upper()
+                mun = row['NO_MUNICIPIO'].strip().upper()
+                escola = str(row['CO_ENTIDADE']).strip().upper()
+                
+                # Build region -> UF relationship
+                if region not in region_to_ufs:
+                    region_to_ufs[region] = set()
+                region_to_ufs[region].add(uf)
+                
+                # Build UF -> Municipality relationship
+                if uf not in uf_to_muns:
+                    uf_to_muns[uf] = set()
+                uf_to_muns[uf].add(mun)
+                
+                # Build Municipality -> School relationship
+                if mun not in mun_to_schools:
+                    mun_to_schools[mun] = set()
+                mun_to_schools[mun].add(escola)
+            
+            # Create reverse lookups
+            uf_to_region = {uf: region for region, ufs in region_to_ufs.items() for uf in ufs}
+            mun_to_uf = {mun: uf for uf, muns in uf_to_muns.items() for mun in muns}
+            
+            # Debug information
+            self.debug_print("\nSample of relationships:")
+            self.debug_print("\nRegion -> UFs:")
+            for region in list(region_to_ufs.keys())[:2]:
+                self.debug_print(f"{region}: {sorted(region_to_ufs[region])}")
+            
+            self.debug_print("\nUF -> Municipalities (first 2 UFs):")
+            for uf in list(uf_to_muns.keys())[:2]:
+                self.debug_print(f"{uf}: {sorted(list(uf_to_muns[uf]))[:3]}...")
+            
+            self.debug_print("\nMunicipality -> Schools (first 2 municipalities):")
+            for mun in list(mun_to_schools.keys())[:2]:
+                self.debug_print(f"{mun}: {sorted(list(mun_to_schools[mun]))[:3]}...")
+            
+            self.debug_print(f"""
+                Hierarchical relationships built from CSV:
+                - {len(region_to_ufs)} regions
+                - {len(uf_to_muns)} UFs
+                - {len(mun_to_schools)} municipalities
+                - {sum(len(schools) for schools in mun_to_schools.values()):,} total schools
+            """)
+            
+        except Exception as e:
+            print(f"Error loading region data: {str(e)}")
+            import traceback
+            print(traceback.format_exc())
 
     def update_both_plots(self, button_clicked=None):
         """
         Atualiza ambos os gráficos quando o botão for clicado.
         """
         try:
+            with self.debug_output:
+                print("Starting plot update...")
+            
             # Store current values
             self.current_query_type = self.query_type_slider.value
             self.current_query_model = self.query_model_dropdown.value
@@ -377,30 +470,58 @@ class VisualizationNotebook:
             self.current_delta = self.delta_dropdown.value
             self.current_stat = self.stats_dropdown.value
             
-            # Get results from database
-            results = self.get_results(
-                self.current_query_type, 
-                self.current_query_model, 
-                self.current_epsilon, 
-                self.current_delta
-            )
+            with self.debug_output:
+                print(f"Selected parameters:")
+                print(f"Query Type: {self.current_query_type}")
+                print(f"Query Model: {self.current_query_model}")
+                print(f"Epsilon: {self.current_epsilon}")
+                print(f"Delta: {self.current_delta}")
+                print(f"Stat: {self.current_stat}")
             
-            if results is not None and not results.empty:
+            # Get filtered results
+            filtered_results = self.df[
+                (self.df['query_type'] == self.current_query_type) &
+                (self.df['query_model'] == self.current_query_model) &
+                (self.df['epsilon'] == self.current_epsilon) &
+                (self.df['delta'] == self.current_delta)
+            ]
+            
+            with self.debug_output:
+                print(f"Initial filter returned {len(filtered_results)} rows")
+            
+            if not filtered_results.empty:
+                # Apply geographic filters
                 filtered_results = self.filter_results(
-                    results, 
+                    filtered_results, 
                     self.region_dropdown.value,
                     self.uf_dropdown.value,
                     self.mun_dropdown.value
                 )
                 
-                # Update plots directly
-                self.update_stats_plot(filtered_results, self.current_stat)
-                self.update_bars_plot(filtered_results)
+                with self.debug_output:
+                    print(f"After geographic filter: {len(filtered_results)} rows")
+                
+                # Update plots with clear_output
+                with self.stats_fig_widget.batch_update():
+                    self.stats_fig_widget.data = []
+                    self.update_stats_plot(filtered_results, self.current_stat)
+                
+                with self.bars_fig_widget.batch_update():
+                    self.bars_fig_widget.data = []
+                    self.update_bars_plot(filtered_results)
+                
+                with self.debug_output:
+                    print("Plots updated successfully")
+                
+            else:
+                with self.debug_output:
+                    print("No data found for selected parameters")
                 
         except Exception as e:
-            print(f"Erro ao atualizar gráficos: {str(e)}")
-            import traceback
-            print(traceback.format_exc())
+            with self.debug_output:
+                print(f"Error updating plots: {str(e)}")
+                import traceback
+                print(traceback.format_exc())
 
     def filter_results(self, results, region='Todas', uf='Todas', mun='Todas'):
         """Filtra os resultados com base nas seleções geográficas."""
@@ -570,32 +691,64 @@ class VisualizationNotebook:
                     ci_lower = results['dp_ci_lower'].fillna(0).astype(float)
                     ci_upper = results['dp_ci_upper'].fillna(0).astype(float)
                     
-                    # Add mean line with labels
+                    # Calculate interval sizes
+                    interval_sizes = ci_upper - ci_lower
+                    
+                    # Handle single entity case
+                    if len(x_labels) == 1:
+                        # Duplicate the point to create a visible line/area
+                        x_labels = x_labels + [x_labels[0] + ' ']  # Add space to create distinct label
+                        interval_sizes = pd.concat([interval_sizes, interval_sizes])
+                    
+                    # Add interval shadows
                     self.stats_fig_widget.add_trace(
                         go.Scatter(
-                            name='Média',
+                            name='Intervalos',
                             x=x_labels,
-                            y=y_values,
-                            mode='lines+markers+text',
-                            line=dict(color='rgb(55, 83, 109)', width=2),
-                            marker=dict(size=8),
-                            text=[f'{v:,.2f}' for v in y_values],
-                            textposition='top center'
+                            y=interval_sizes,
+                            mode='none',
+                            fill='tonexty',
+                            fillcolor='rgba(55, 83, 109, 0.15)',  # Lighter shadow
+                            showlegend=False
                         )
                     )
                     
-                    # Add confidence interval
+                    # Add just the line for interval sizes
                     self.stats_fig_widget.add_trace(
                         go.Scatter(
-                            name='Intervalo de Confiança',
-                            x=x_labels + x_labels[::-1],
-                            y=ci_upper.tolist() + ci_lower.tolist()[::-1],
-                            fill='toself',
-                            fillcolor='rgba(55, 83, 109, 0.2)',
-                            line=dict(color='rgba(255,255,255,0)'),
-                            showlegend=True,
-                            hovertemplate='IC Superior: %{y:.2f}<br>IC Inferior: %{text:.2f}',
-                            text=ci_lower
+                            name='Intervalo',
+                            x=x_labels,
+                            y=interval_sizes,
+                            mode='lines',  # Only lines, no markers or text
+                            line=dict(
+                                color='rgb(55, 83, 109)', 
+                                width=1.5  # Thinner line
+                            ),
+                            connectgaps=False
+                        )
+                    )
+                    
+                    # Update y-axis range based on selected statistic
+                    if selected_stat == 'ci':
+                        y_max = interval_sizes.max()
+                        y_min = 0
+                        y_title = 'Tamanho do Intervalo de Confiança'
+                    else:
+                        y_values = results[stat_columns[selected_stat]].fillna(0).astype(float)
+                        y_max = y_values.max()
+                        y_min = y_values.min()
+                        y_title = stat_names[selected_stat]
+                    
+                    # Add padding to the range
+                    y_range = y_max - y_min
+                    y_max += y_range * 0.1  # 10% padding on top
+                    if y_min > 0:
+                        y_min = max(0, y_min - y_range * 0.1)  # 10% padding on bottom, but not below 0
+                    
+                    self.stats_fig_widget.update_layout(
+                        yaxis=dict(
+                            range=[y_min, y_max],
+                            title=y_title
                         )
                     )
                 else:
@@ -786,211 +939,6 @@ class VisualizationNotebook:
             import traceback
             self.debug_print(traceback.format_exc())
 
-    def _create_widgets(self):
-        """
-        Cria todos os widgets da interface.
-        """
-        # Query type slider
-        self.query_type_slider = widgets.IntSlider(
-            value=1,
-            min=1,
-            max=8,
-            step=1,
-            description='Query Type:',
-            continuous_update=False
-        )
-        
-        # Query model dropdown
-        self.query_model_dropdown = widgets.Dropdown(
-            options=[1, 2, 3],
-            value=1,
-            description='Query Model:'
-        )
-        
-        # Region dropdown
-        self.region_dropdown = widgets.Dropdown(
-            options=['Todas'],
-            value='Todas',
-            description='Região:'
-        )
-        
-        # UF dropdown
-        self.uf_dropdown = widgets.Dropdown(
-            options=['Todas'],
-            value='Todas',
-            description='UF:'
-        )
-        
-        # Municipality dropdown
-        self.mun_dropdown = widgets.Dropdown(
-            options=['Todas'],
-            value='Todas',
-            description='Município:'
-        )
-        
-        # Epsilon dropdown
-        self.epsilon_dropdown = widgets.Dropdown(
-            options=[1.0, 10.0],
-            value=1.0,
-            description='Epsilon:'
-        )
-        
-        # Delta dropdown
-        self.delta_dropdown = widgets.Dropdown(
-            options=[1e-5, 1e-2],
-            value=1e-5,
-            description='Delta:'
-        )
-        
-        # Stats dropdown
-        self.stats_dropdown = widgets.Dropdown(
-            options=[
-                ('MAE', 'mae'),
-                ('MAPE', 'mape'),
-                ('Média DP', 'dp_avg'),
-                ('Mediana DP', 'dp_median'),
-                ('Desvio Padrão DP', 'dp_stddev'),
-                ('Valor Original', 'original'),
-                ('Intervalo de Confiança', 'ci')
-            ],
-            value='dp_avg',
-            description='Estatística:'
-        )
-        
-        # Submit button
-        self.submit_button = widgets.Button(
-            description='Atualizar Gráficos',
-            button_style='primary',
-            tooltip='Clique para atualizar os gráficos com as seleções atuais'
-        )
-        
-        # Debug output with increased height
-        self.debug_output = widgets.Output(
-            layout=widgets.Layout(
-                height='200px',
-                border='1px solid black',
-                overflow_y='auto'
-            )
-        )
-        
-        # Create empty figures with consistent size
-        plot_width = 1000  # Increased width
-        plot_height = 500
-        
-        self.stats_fig_widget = go.FigureWidget(
-            layout=go.Layout(
-                height=plot_height,
-                width=plot_width,
-                margin=dict(t=50, b=100, l=100, r=50)
-            )
-        )
-        
-        self.bars_fig_widget = go.FigureWidget(
-            layout=go.Layout(
-                height=plot_height,
-                width=plot_width,
-                margin=dict(t=50, b=100, l=100, r=50)
-            )
-        )
-
-    def _load_region_data(self):
-        """
-        Carrega dados geográficos do arquivo CSV.
-        """
-        try:
-            # Get current notebook directory
-            notebook_dir = Path().absolute()
-            csv_file_path = notebook_dir / "regiao_uf_municipio_escola.csv"
-            
-            self.region_data = pd.read_csv(csv_file_path, sep=';')
-            
-            # Debug: Show sample of the CSV data
-            self.debug_print("\nSample of CSV data:")
-            self.debug_print("\nColumns:")
-            self.debug_print(self.region_data.columns.tolist())
-            self.debug_print("\nFirst 5 rows:")
-            self.debug_print(self.region_data.head().to_string())
-            
-            # Rest of the function remains the same
-            unique_regions = sorted(self.region_data['NO_REGIAO'].unique())
-            self.region_dropdown.options = ['Todas'] + unique_regions
-            
-            # Prepara os dicionários de relação
-            self.uf_by_region = {}
-            self.mun_by_uf = {}
-            
-            for region in unique_regions:
-                region_data = self.region_data[self.region_data['NO_REGIAO'] == region]
-                self.uf_by_region[region] = sorted(region_data['SG_UF'].unique())
-                
-                for uf in self.uf_by_region[region]:
-                    uf_data = region_data[region_data['SG_UF'] == uf]
-                    self.mun_by_uf[uf] = sorted(uf_data['NO_MUNICIPIO'].unique())
-            
-            # Atualiza UF dropdown com todas as UFs
-            all_ufs = sorted(self.region_data['SG_UF'].unique())
-            self.uf_dropdown.options = ['Todas'] + all_ufs
-            
-            # Build hierarchical relationships from the CSV file
-            self.debug_print("\nBuilding hierarchical relationships from CSV...")
-            region_to_ufs = {}
-            uf_to_muns = {}
-            mun_to_schools = {}
-            
-            # First pass: Build all relationships from CSV
-            for _, row in self.region_data.iterrows():
-                # Force uppercase for all fields
-                region = row['NO_REGIAO'].strip().upper()
-                uf = row['SG_UF'].strip().upper()
-                mun = row['NO_MUNICIPIO'].strip().upper()
-                escola = str(row['CO_ENTIDADE']).strip().upper()
-                
-                # Build region -> UF relationship
-                if region not in region_to_ufs:
-                    region_to_ufs[region] = set()
-                region_to_ufs[region].add(uf)
-                
-                # Build UF -> Municipality relationship
-                if uf not in uf_to_muns:
-                    uf_to_muns[uf] = set()
-                uf_to_muns[uf].add(mun)
-                
-                # Build Municipality -> School relationship
-                if mun not in mun_to_schools:
-                    mun_to_schools[mun] = set()
-                mun_to_schools[mun].add(escola)
-            
-            # Create reverse lookups
-            uf_to_region = {uf: region for region, ufs in region_to_ufs.items() for uf in ufs}
-            mun_to_uf = {mun: uf for uf, muns in uf_to_muns.items() for mun in muns}
-            
-            # Debug information
-            self.debug_print("\nSample of relationships:")
-            self.debug_print("\nRegion -> UFs:")
-            for region in list(region_to_ufs.keys())[:2]:
-                self.debug_print(f"{region}: {sorted(region_to_ufs[region])}")
-            
-            self.debug_print("\nUF -> Municipalities (first 2 UFs):")
-            for uf in list(uf_to_muns.keys())[:2]:
-                self.debug_print(f"{uf}: {sorted(list(uf_to_muns[uf]))[:3]}...")
-            
-            self.debug_print("\nMunicipality -> Schools (first 2 municipalities):")
-            for mun in list(mun_to_schools.keys())[:2]:
-                self.debug_print(f"{mun}: {sorted(list(mun_to_schools[mun]))[:3]}...")
-            
-            self.debug_print(f"""
-                Hierarchical relationships built from CSV:
-                - {len(region_to_ufs)} regions
-                - {len(uf_to_muns)} UFs
-                - {len(mun_to_schools)} municipalities
-                - {sum(len(schools) for schools in mun_to_schools.values()):,} total schools
-            """)
-            
-        except Exception as e:
-            print(f"Error loading region data: {str(e)}")
-            import traceback
-            print(traceback.format_exc())
-
     def get_results(self, query_type, query_model, epsilon, delta):
         """
         Obtém os resultados do banco de dados usando cursor.fetchall().
@@ -1011,7 +959,7 @@ class VisualizationNotebook:
             
             query = f"""
                 SELECT *
-                FROM {TABLE_NAMES['db_results_stats']}
+                FROM dp_results_stats_bq
                 WHERE query_type = %s
                 AND query_model = %s
                 AND epsilon = %s
@@ -1063,32 +1011,6 @@ class VisualizationNotebook:
                 cur.close()
             if 'conn' in locals():
                 conn.close()
-
-    def _load_query_metadata(self):
-        """
-        Carrega os metadados das queries de um arquivo CSV.
-        """
-        try:
-            # Get current notebook directory
-            notebook_dir = Path().absolute()
-            csv_file_path = notebook_dir / "queries_formatadas.csv"
-            
-            # Read the CSV file with proper encoding and separator
-            self.query_metadata = pd.read_csv(
-                csv_file_path,
-                sep=';',
-                encoding='utf-8'
-            )
-            #self.debug_print("Query metadata loaded successfully from CSV")
-            
-        except Exception as e:
-            self.debug_print(f"Error loading query metadata: {str(e)}")
-            # Initialize empty DataFrame if loading fails
-            self.query_metadata = pd.DataFrame(columns=[
-                'query_model', 'query_type', 'aggregation_type', 
-                'aggregated_column', 'query_argument', 
-                'aggregated_data', 'group_by'
-            ]) 
 
     def update_geographic_hierarchy(self, force_update=False):
         """Updates dp_results_stats_bq with parent geographic columns."""

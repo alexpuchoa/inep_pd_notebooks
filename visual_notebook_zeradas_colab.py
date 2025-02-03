@@ -16,45 +16,52 @@ pio.renderers.default = 'colab'
 class LostValuesVisualizationColab:
     """Visualização específica para contagem de valores perdidos - Versão Colab."""
     
-    def __init__(self, data_path):
-        """Initialize the visualization interface with CSV data."""
+    def __init__(self, data=None, queries_config=None, data_path=None):
+        """Initialize the visualization interface with provided data or from CSV."""
         try:
             print("Carregando App")
             
-            # Load data first
-            self.data_path = Path(data_path)
-            csv_path = self.data_path / "dp_results_stats_bq.csv"
-            queries_file = self.data_path / "queries_formatadas_bq.csv"
+            if data is not None and queries_config is not None:
+                # Use provided data
+                self.df = data
+                self.queries_config = queries_config
+                print(f"Using provided data. Shape: {self.df.shape}")
             
-            print("Loading data...")
-            print(f"Reading CSV from: {data_path}")
+            elif data_path:
+                # Load data from files
+                self.data_path = Path(data_path)
+                csv_path = self.data_path / "dp_results_stats_bq.csv"
+                queries_file = self.data_path / "queries_formatadas_bq.csv"
+                
+                print("Loading data...")
+                print(f"Reading CSV from: {data_path}")
+                
+                # Load data in chunks
+                chunks = []
+                chunk_size = 500000
+                for chunk in pd.read_csv(
+                    csv_path,
+                    dtype={
+                        'epsilon': 'float64',
+                        'delta': 'float64',
+                        'dp_avg': 'float64',
+                        'original_value': 'float64'
+                    },
+                    sep=';',
+                    encoding='latin1',
+                    low_memory=False,
+                    chunksize=chunk_size
+                ):
+                    chunks.append(chunk)
+                
+                self.df = pd.concat(chunks, ignore_index=True)
+                print(f"Data loaded successfully. Shape: {self.df.shape}")
+                
+                # Load queries configuration
+                self.queries_config = pd.read_csv(queries_file, sep=';')
             
-            # Load data in chunks
-            chunks = []
-            chunk_size = 500000
-            
-            for i, chunk in enumerate(pd.read_csv(
-                csv_path,
-                dtype={
-                    'epsilon': 'float64',
-                    'delta': 'float64',
-                    'dp_avg': 'float64',
-                    'original_value': 'float64'
-                },
-                sep=';',
-                encoding='latin1',
-                low_memory=False,
-                chunksize=chunk_size
-            )):
-                chunks.append(chunk)
-            
-            #print("Concatenating chunks...")
-            self.df = pd.concat(chunks, ignore_index=True)
-            print(f"Data loaded successfully. Shape: {self.df.shape}")
-            
-            # Load queries configuration
-            self.queries_config = pd.read_csv(queries_file, sep=';')
-            #print(f"Queries loaded. Shape: {self.queries_config.shape}")
+            else:
+                raise ValueError("Either data and queries_config or data_path must be provided")
             
             # Setup basic configurations
             self.hierarchy_levels = ['NO_REGIAO', 'SG_UF', 'NO_MUNICIPIO', 'CO_ENTIDADE']
@@ -63,7 +70,6 @@ class LostValuesVisualizationColab:
                                       if agg in self.df['aggregated_data'].str.upper().unique()]
             
             # Create widgets
-            #print("\nCreating widgets:")
             self._create_widgets()
             
             # Display interface

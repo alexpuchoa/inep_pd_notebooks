@@ -28,7 +28,7 @@ class VisualizationNotebook:
     Gerencia a interface interativa e a exibição de gráficos comparativos.
     """
 
-    def __init__(self, data_path):
+    def __init__(self, data=None, queries_config=None, data_path=None):
         """
         Inicializa o notebook de visualização.
         """
@@ -38,13 +38,47 @@ class VisualizationNotebook:
             # Create debug output widget first
             self.debug_output = widgets.Output()
             
-            # Set data path
-            self.data_path = Path(data_path)
-            self.results_path = self.data_path / "dp_results_stats_bq.csv"
-            self.queries_file = self.data_path / "queries_formatadas_bq.csv"
- 
-            # Load data
-            self._load_data()
+            if data is not None and queries_config is not None:
+                # Use provided data
+                self.df = data
+                self.queries_config = queries_config
+                print(f"Using provided data. Shape: {self.df.shape}")
+            
+            elif data_path:
+                # Load data from files
+                self.data_path = Path(data_path)
+                csv_path = self.data_path / "dp_results_stats_bq.csv"
+                queries_file = self.data_path / "queries_formatadas_bq.csv"
+                
+                print("Loading data...")
+                print(f"Reading CSV from: {data_path}")
+                
+                # Load data in chunks
+                chunks = []
+                chunk_size = 500000
+                for chunk in pd.read_csv(
+                    csv_path,
+                    dtype={
+                        'epsilon': 'float64',
+                        'delta': 'float64',
+                        'dp_avg': 'float64',
+                        'original_value': 'float64'
+                    },
+                    sep=';',
+                    encoding='latin1',
+                    low_memory=False,
+                    chunksize=chunk_size
+                ):
+                    chunks.append(chunk)
+                
+                self.df = pd.concat(chunks, ignore_index=True)
+                print(f"Data loaded successfully. Shape: {self.df.shape}")
+                
+                # Load queries configuration
+                self.queries_config = pd.read_csv(queries_file, sep=';')
+            
+            else:
+                raise ValueError("Either data and queries_config or data_path must be provided")
             
             # Create other widgets and connect observers
             self._create_widgets()
@@ -189,7 +223,7 @@ class VisualizationNotebook:
 
             # Group controls with labels
             query_controls = widgets.VBox([
-                widgets.HTML("<b>Escolha da query</b>"),
+                widgets.HTML("<b>Tipo e Modelo da Query (ver tabela acima)</b>"),
                 widgets.HBox([
                     self.query_type_slider,
                     self.query_model_dropdown
@@ -614,9 +648,9 @@ class VisualizationNotebook:
                     return
                 
                 # Get query metadata for current selection
-                current_metadata = self.query_metadata[
-                    (self.query_metadata['query_model'] == self.current_query_model) & 
-                    (self.query_metadata['query_type'] == self.current_query_type)
+                current_metadata = self.queries_config[
+                    (self.queries_config['query_model'] == self.current_query_model) & 
+                    (self.queries_config['query_type'] == self.current_query_type)
                 ].iloc[0]
                 
                 # Get aggregation type for y-axis title
@@ -824,9 +858,9 @@ class VisualizationNotebook:
                     return
                 
                 # Get query metadata for current selection
-                current_metadata = self.query_metadata[
-                    (self.query_metadata['query_model'] == self.current_query_model) & 
-                    (self.query_metadata['query_type'] == self.current_query_type)
+                current_metadata = self.queries_config[
+                    (self.queries_config['query_model'] == self.current_query_model) & 
+                    (self.queries_config['query_type'] == self.current_query_type)
                 ].iloc[0]
                 
                 # Get aggregation type and data for axis titles

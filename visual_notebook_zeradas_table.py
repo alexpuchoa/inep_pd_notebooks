@@ -21,71 +21,66 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-class LostValuesTableVisualization:
-    """Visualização tabular para contagem de valores perdidos."""
+class TableVisualization:
+    """Visualização em formato de tabela dos resultados com DP."""
     
-    def __init__(self, data_path):
-        """Initialize the visualization."""
-        print("Carregando App")
-        
-        # Load data
-        print("Loading data...")
-        self.load_data(data_path)
-        
-        # Create widgets
-        #print("Creating widgets:")
-        self._create_widgets()
-        
-        # Display interface
-        self.display_interface()
-        
-        # Update table with initial values
-        self.update_table()
-
-    def load_data(self, data_path):
-        """Load data from CSV files."""
+    def __init__(self, data=None, queries_config=None, data_path=None):
+        """Initialize with provided data or from CSV."""
         try:
-            self.data_path = Path(data_path)
-            csv_path = self.data_path / "dp_results_stats_bq.csv"
-            queries_file = self.data_path / "queries_formatadas_bq.csv"
+            print("Carregando App")
             
-            #print(f"Reading CSV from: {data_path}")
+            if data is not None and queries_config is not None:
+                # Use provided data
+                self.df = data
+                self.queries_config = queries_config
+                print(f"Using provided data. Shape: {self.df.shape}")
             
-            # Load data in chunks
-            chunks = []
-            chunk_size = 500000
+            elif data_path:
+                # Load data from files
+                self.data_path = Path(data_path)
+                csv_path = self.data_path / "dp_results_stats_bq.csv"
+                queries_file = self.data_path / "queries_formatadas_bq.csv"
+                
+                print("Loading data...")
+                print(f"Reading CSV from: {data_path}")
+                
+                # Load data in chunks
+                chunks = []
+                chunk_size = 500000
+                for chunk in pd.read_csv(
+                    csv_path,
+                    dtype={
+                        'epsilon': 'float64',
+                        'delta': 'float64',
+                        'dp_avg': 'float64',
+                        'original_value': 'float64'
+                    },
+                    sep=';',
+                    encoding='latin1',
+                    low_memory=False,
+                    chunksize=chunk_size
+                ):
+                    chunks.append(chunk)
+                
+                self.df = pd.concat(chunks, ignore_index=True)
+                print(f"Data loaded successfully. Shape: {self.df.shape}")
+                
+                # Load queries configuration
+                self.queries_config = pd.read_csv(queries_file, sep=';')
             
-            for i, chunk in enumerate(pd.read_csv(
-                csv_path,
-                dtype={
-                    'epsilon': 'float64',
-                    'delta': 'float64',
-                    'dp_avg': 'float64',
-                    'original_value': 'float64'
-                },
-                sep=';',
-                encoding='latin1',
-                low_memory=False,
-                chunksize=chunk_size
-            )):
-                chunks.append(chunk)
+            else:
+                raise ValueError("Either data and queries_config or data_path must be provided")
             
-            #print("Concatenating chunks...")
-            self.df = pd.concat(chunks, ignore_index=True)
-            print(f"Data loaded successfully. Shape: {self.df.shape}")
+            # Create widgets
+            self._create_widgets()
             
-            # Load queries configuration
-            self.queries_config = pd.read_csv(queries_file, sep=';')
-            #print(f"Queries loaded. Shape: {self.queries_config.shape}")
+            # Display interface
+            self.display_interface()
             
-            # Setup basic configurations
-            self.hierarchy_levels = ['NO_REGIAO', 'SG_UF', 'NO_MUNICIPIO', 'CO_ENTIDADE']
-            self.ordered_aggregations = ['QT_ALUNOS', 'MEDIA_NOTA', 'SOMA_NOTAS']
-            self.aggregation_options = [agg for agg in self.ordered_aggregations 
-                                      if agg in self.df['aggregated_data'].str.upper().unique()]
+            print("Initialization complete!")
             
         except Exception as e:
-            print(f"Error in loading data: {str(e)}")
+            print(f"Error in initialization: {str(e)}")
             print(traceback.format_exc())
 
     def _create_segmentation_map(self):

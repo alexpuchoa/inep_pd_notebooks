@@ -354,8 +354,8 @@ class VisualizationNotebook:
         """
         try:
             # Get current notebook directory
-            csv_file_path = self.data_path / "regiao_uf_municipio_escola.csv"
-            self.region_data = pd.read_csv(csv_file_path, sep=';')
+            #csv_file_path = self.data_path / "regiao_uf_municipio_escola.csv"
+            self.region_data = pd.read_csv("regiao_uf_municipio_escola.csv", sep=';')
             
             # Debug: Show sample of the CSV data
             self.debug_print("\nSample of CSV data:")

@@ -37,7 +37,10 @@ class VisualizationNotebook:
             
             # Create debug output widget first
             self.debug_output = widgets.Output()
-            
+
+            # Set data path
+            self.data_path = Path(data_path)            
+
             if data is not None and queries_config is not None:
                 # Use provided data
                 self.df = data
@@ -46,7 +49,7 @@ class VisualizationNotebook:
             
             elif data_path:
                 # Load data from files
-                self.data_path = Path(data_path)
+
                 csv_path = self.data_path / "dp_results_stats_bq.csv"
                 queries_file = self.data_path / "queries_formatadas_bq.csv"
                 

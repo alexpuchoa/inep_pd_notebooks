@@ -322,7 +322,12 @@ class LostValuesVisualizationColab:
                 df_plot['lost_entities'] / 
                 df_plot['total_entities'] * 100
             )
-            df_plot['total_lost'] = df_plot['lost_entities']
+            
+            # Add confidence level calculation
+            df_plot['confidence_level'] = (
+                1 - df_plot['lost_entities'] / 
+                df_plot['total_entities']
+            ) * 100
             
             # Create single figure with secondary y-axis
             fig = go.Figure()
@@ -337,13 +342,16 @@ class LostValuesVisualizationColab:
                 hovertemplate=(
                     "<b>%{x}</b><br>" +
                     "Total de Entidades: %{customdata[0]:.0f}<br>" +
-                    "Entidades Perdidas: %{y:.0f}<br>" +
-                    "Percentual: %{customdata[1]:.1f}%<br>" +
+                    "Entidades Perdidas: %{customdata[1]:.0f}<br>" +
+                    "Percentual: %{customdata[2]:.1f}%<br>" +
+                    "Nível de Confiança: %{customdata[3]:.1f}%<br>" +
                     "<extra></extra>"
                 ),
                 customdata=np.stack((
                     df_plot['total_entities'],
-                    df_plot['percentage']
+                    df_plot['lost_entities'],
+                    df_plot['percentage'],
+                    df_plot['confidence_level']
                 ), axis=1)
             ))
 
@@ -362,11 +370,14 @@ class LostValuesVisualizationColab:
                     "Total de Entidades: %{customdata[0]:.0f}<br>" +
                     "Entidades Perdidas: %{customdata[1]:.0f}<br>" +
                     "Percentual: %{y:.1f}%<br>" +
+                    "Nível de Confiança: %{customdata[3]:.1f}%<br>" +
                     "<extra></extra>"
                 ),
                 customdata=np.stack((
                     df_plot['total_entities'],
-                    df_plot['lost_entities']
+                    df_plot['lost_entities'],
+                    df_plot['percentage'],
+                    df_plot['confidence_level']
                 ), axis=1)
             ))
 

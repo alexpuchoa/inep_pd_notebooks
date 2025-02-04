@@ -87,18 +87,21 @@ class TableVisualization:
             self.aggregation_options = [agg for agg in self.ordered_aggregations 
                                       if agg in self.df['aggregated_data'].str.upper().unique()]
             
-            with self.debug_output:
-                print("Creating widgets...")
+            #ith self.debug_output:
+            #      print("Creating widgets...")
             # Create widgets
             self._create_widgets()
             
-            with self.debug_output:
-                print("Displaying interface...")
+
+            #with self.debug_output:
+            #      print("Displaying interface...")
             # Display interface
+
             self.display_interface()
             
-            with self.debug_output:
-                print("Initialization complete!")
+            #with self.debug_output:
+            #      print("Initialization complete!")
+
             
         except Exception as e:
             with self.debug_output:
@@ -214,7 +217,7 @@ class TableVisualization:
     def update_table(self, button_clicked=None):
         """Update the table with current selections."""
         try:
-            print("Starting update_table function")  # Basic test print
+            print("Starting update_table function")
             
             # Get current selections
             aggregation = self.aggregation_dropdown.value
@@ -339,11 +342,16 @@ class TableVisualization:
                         ]['original_value'].median()
                     }).reset_index()
                     lost_counts.rename(columns={'group_by_val1': 'lost_count'}, inplace=True)
-                
+                    
+                with self.debug_output:
+                    print(f"Lost counts: {lost_counts.head()}")
+                    print(f"Base table: {base_table.head()}")
+                    print(f"Grouping col: {grouping_col}")
                 # Add to base table
                 lost_col = f'Perdidos (ε={eps}, δ={delta})'
-                median_col = f'Mediana {aggregation.lower().replace("_", " ")}'
+                median_col = f'Mediana {aggregation.lower().replace("_", " ")} (ε={eps}, δ={delta})'
                 
+
                 base_table = base_table.merge(
                     lost_counts,
                     on=grouping_col,

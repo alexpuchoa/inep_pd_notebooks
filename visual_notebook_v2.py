@@ -40,7 +40,12 @@ class VisualizationNotebook:
             
             # Create debug output widget first
             self.debug_output = widgets.Output()
-
+            print("Debug widget created")
+            display(self.debug_output)
+            
+            with self.debug_output:
+                print("Debug output is working")
+            
             # Set data path
             self.data_path = Path(data_path)            
 
@@ -68,7 +73,8 @@ class VisualizationNotebook:
                         'epsilon': 'float64',
                         'delta': 'float64',
                         'dp_avg': 'float64',
-                        'original_value': 'float64'
+                        'original_value': 'float64',
+                        'group_by_val1': 'str'
                     },
                     sep=';',
                     encoding='latin1',

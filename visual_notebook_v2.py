@@ -244,7 +244,7 @@ class VisualizationNotebook:
                 widgets.HTML("<b>Tipo e Modelo da Query (ver tabela acima)</b>"),
                 widgets.HBox([
                     self.query_type_slider,
-                    self.query_model_dropdown
+                    self.query_type_dropdown
                 ])
             ])
             
@@ -310,14 +310,27 @@ class VisualizationNotebook:
         """
         Cria todos os widgets da interface.
         """
-        # Query type slider
+        # Query type slider with explicit layout and style
         self.query_type_slider = widgets.IntSlider(
             value=1,
             min=1,
             max=8,
             step=1,
             description='Query Type:',
-            continuous_update=False
+            continuous_update=False,
+            style={'description_width': 'initial'},
+            layout=widgets.Layout(width='50%')
+        )
+        
+        # Add immediate debug output
+        print(f"Slider created with value: {self.query_type_slider.value}")
+        
+        # Maybe try a different widget type
+        self.query_type_dropdown = widgets.Dropdown(
+            options=[(f'Query {i}', i) for i in range(1, 9)],
+            value=1,
+            description='Query Type:',
+            style={'description_width': 'initial'}
         )
         
         # Query model dropdown

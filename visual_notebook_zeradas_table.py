@@ -175,8 +175,12 @@ class TableVisualization:
     def _create_interface(self):
         """Create the interface container."""
         title = widgets.HTML(
-            "<h2 style='text-align: center; margin: 20px 0; color: #2c3e50;'>Visualização de Valores Perdidos - Tabela</h2>"
+            "<h2 style='text-align: center; margin: 20px 0; color: #2c3e50;'>Tabela de Valores Perdidos</h2>"
         )
+
+        legendas = widgets.VBox([
+            widgets.HTML("<b>Legendas</b><li><b>Valores perdidos</b> abrangem unidades que <b>retornaram zerados</b> ou <b>não retornaram valores</b>.</li><li>Os números se referem sempre às quantidades de <b>unidades</b> do <b>Nivel Hirárquico inferior</b> que foram zeradas ou não retornaram valores. Ex.: Se o Nível selecionado for 'CO_MUNICIPIO', os valores perdidos serão de Escolas.</li><li>As colunas <b>Perdidos</b> apresentam as quantidades nominais de unidades zeradas/não retornadas e o (%) correspondente do total</li><li>As colunas <b>Mediana qt alunos</b> apresentam as medianas das quantidades de alunos das unidades cujos valores foram perdidos.</li>")
+        ])
         
         # Controls sections
         query_controls = widgets.VBox([
@@ -193,6 +197,7 @@ class TableVisualization:
             title,
             query_controls,
             filters_controls,
+            legendas,
             self.submit_button
         ], layout=widgets.Layout(
             padding='20px',
@@ -297,10 +302,10 @@ class TableVisualization:
                 base_table = filtered_df.groupby(grouping_col).agg({
                     'group_by_val1': 'nunique'
                 })
-
+                '''
                 with self.debug_output:
                     print(f"base_table 1 group_by_val1: {base_table.sort_values('group_by_val1', ascending=False).head()}")
-
+                '''
                 base_table = pd.DataFrame({
                     grouping_col: base_table.index,
                     total_col: base_table['group_by_val1'].values
@@ -399,40 +404,30 @@ class TableVisualization:
     def display_interface(self):
         """Display the interface components."""
         try:
-            #with self.debug_output:
-            #      print("Starting display_interface")
- 
-            # Create containers for each section
-            title_section = widgets.VBox([
-                widgets.HTML("<h2>Visualização de Valores Perdidos - Tabela</h2>")
+            title = widgets.HTML(
+                "<h2 style='text-align: left; margin: 20px 0; color: #2c3e50;'>Tabela de Valores Perdidos</h2>"
+            )
+
+            legendas = widgets.VBox([
+                widgets.HTML("<b>Legendas</b><li><b>Valores perdidos</b> abrangem unidades que <b>retornaram zerados</b> ou <b>não retornaram valores</b>.</li><li>Os números se referem sempre às quantidades de <b>unidades</b> do <b>Nivel Hirárquico inferior</b> que foram zeradas ou não retornaram valores. Ex.: Se o Nível selecionado for 'CO_MUNICIPIO', os valores perdidos serão de Escolas.</li><li>As colunas <b>Perdidos</b> apresentam as quantidades nominais de unidades zeradas/não retornadas e o (%) correspondente do total</li><li>As colunas <b>Mediana qt alunos</b> apresentam as medianas das quantidades de alunos das unidades cujos valores foram perdidos.</li>")
             ])
-            
-            #with self.debug_output:
-            #      print("Created title section")
-            
+             
             query_section = widgets.VBox([
                 widgets.HTML("<b>Configuração da Query</b>"),
                 widgets.HBox([self.aggregation_dropdown, self.hierarchy_dropdown])
             ])
-            
-            #with self.debug_output:
-            #      print("Created query section")
-            
 
             filters_section = widgets.VBox([
                 widgets.HTML("<b>Filtros Geográficos</b>"),
                 widgets.HBox([self.region_dropdown, self.uf_dropdown, self.mun_dropdown])
             ])
 
-            #with self.debug_output:
-            #      print("Created filters section")
-            
-
             # Create main container
             main_container = widgets.VBox([
-                title_section,
+                title,
                 query_section,
                 filters_section,
+                legendas,
                 self.submit_button,
                 self.table_output
             ], layout=widgets.Layout(
@@ -442,26 +437,17 @@ class TableVisualization:
                 margin='10px'
             ))
             
-            #with self.debug_output:
-            #      print("Created main container, displaying...")
-
             # Display the main container
             display(main_container)
             
             with self.debug_output:
                 print("Loading regions...")
+
             # Initialize geographic filters
             self._load_regions()
             
-            #with self.debug_output:
-            #      print("Connecting observers...")
-            
             # Connect observers
             self._connect_observers()
-            
-
-            #with self.debug_output:
-            #      print("Display interface complete")
 
         except Exception as e:
             with self.debug_output:

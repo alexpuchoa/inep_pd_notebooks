@@ -509,9 +509,14 @@ class VisualizationNotebook:
 
     def update_both_plots(self, button_clicked=None):
         print("Button clicked - updating plots")
+        print(f"Raw slider value: {self.query_type_slider.value}")
+        print(f"Slider widget state: {self.query_type_slider}")
         try:
             # Update all current values only when button is clicked
             self.current_query_type = self.query_type_slider.value
+            print(f"current_query_type after assignment: {self.current_query_type}")
+            
+            # Rest of the updates
             self.current_query_model = self.query_model_dropdown.value
             self.current_epsilon = self.epsilon_dropdown.value
             self.current_delta = self.delta_dropdown.value

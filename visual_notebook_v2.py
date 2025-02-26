@@ -243,8 +243,8 @@ class VisualizationNotebook:
             query_controls = widgets.VBox([
                 widgets.HTML("<b>Tipo e Modelo da Query (ver tabela acima)</b>"),
                 widgets.HBox([
-                    self.query_type_slider,
-                    self.query_type_dropdown
+                    self.query_type_dropdown,
+                    self.query_model_dropdown
                 ])
             ])
             
@@ -310,22 +310,7 @@ class VisualizationNotebook:
         """
         Cria todos os widgets da interface.
         """
-        # Query type slider with explicit layout and style
-        self.query_type_slider = widgets.IntSlider(
-            value=1,
-            min=1,
-            max=8,
-            step=1,
-            description='Query Type:',
-            continuous_update=False,
-            style={'description_width': 'initial'},
-            layout=widgets.Layout(width='50%')
-        )
-        
-        # Add immediate debug output
-        print(f"Slider created with value: {self.query_type_slider.value}")
-        
-        # Maybe try a different widget type
+        # Query type dropdown
         self.query_type_dropdown = widgets.Dropdown(
             options=[(f'Query {i}', i) for i in range(1, 9)],
             value=1,
@@ -522,11 +507,10 @@ class VisualizationNotebook:
 
     def update_both_plots(self, button_clicked=None):
         print("Button clicked - updating plots")
-        print(f"Raw slider value: {self.query_type_slider.value}")
-        print(f"Slider widget state: {self.query_type_slider}")
+        print(f"Raw dropdown value: {self.query_type_dropdown.value}")
         try:
-            # Update all current values only when button is clicked
-            self.current_query_type = self.query_type_slider.value
+            # Use dropdown value instead of slider
+            self.current_query_type = self.query_type_dropdown.value
             print(f"current_query_type after assignment: {self.current_query_type}")
             
             # Rest of the updates

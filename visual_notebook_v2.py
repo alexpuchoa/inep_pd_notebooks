@@ -554,9 +554,15 @@ class VisualizationNotebook:
                     if not filtered_results.empty:
                         print(filtered_results[['parent_regiao', 'parent_uf', 'parent_municipio', self.current_stat]].head())
                 
+                # Right before updating plots
+                print(f"About to update plots with {len(filtered_results)} rows")
+                
                 # Update plots
                 self.update_stats_plot(filtered_results, self.current_stat)
+                print("Stats plot updated")
+                
                 self.update_bars_plot(filtered_results)
+                print("Bars plot updated")
                 
                 with self.debug_output:
                     print("Plots updated successfully")

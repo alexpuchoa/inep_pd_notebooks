@@ -152,6 +152,9 @@ class VisualizationNotebook:
         Conecta os observadores aos widgets para reagir às mudanças.
         """
         try:
+            # Connect query type slider to update internal state
+            self.query_type_slider.observe(self._on_query_type_change, names='value')
+            
             # Connect geographic filters only for cascading updates
             self.region_dropdown.observe(self._on_region_change, names='value')
             self.uf_dropdown.observe(self._on_uf_change, names='value')
@@ -170,9 +173,11 @@ class VisualizationNotebook:
             self.debug_print(traceback.format_exc())
 
     def _on_query_type_change(self, change):
-        """Handler específico para mudanças no query_type"""
-        #self.debug_print(f"\nDEBUG: Query type changed to {change.new}")
-        self.update_both_plots(None)
+        """
+        Handler for query type changes.
+        """
+        self.current_query_type = change.new
+        print(f"Query type changed to: {self.current_query_type}")
 
     def _on_query_model_change(self, change):
         """Handler específico para mudanças no query_model"""

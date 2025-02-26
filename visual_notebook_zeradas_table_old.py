@@ -55,35 +55,28 @@ class TableVisualization:
                     print("Loading data...")
                     print(f"Reading CSV from: {data_path}")
                 
-                # Load data with explicit type conversion and debug prints
-                print("\nStarting data load...")
+                # Load data in chunks
+                chunks = []
+                chunk_size = 500000
+                for chunk in pd.read_csv(
+                    csv_path,
+                    dtype={
+                        'epsilon': 'float64',
+                        'delta': 'float64',
+                        'dp_avg': 'float64',
+                        'original_value': 'float64'
+                    },
+                    sep=';',
+                    encoding='latin1',
+                    low_memory=False,
+                    chunksize=chunk_size
+                ):
+                    chunks.append(chunk)
                 
-                if os.path.exists(csv_path):
-                    print("Reading CSV with dtype specification...")
-                    self.df = pd.read_csv(
-                        csv_path,
-                        dtype={
-                            'epsilon': 'float64',
-                            'delta': 'float64',
-                            'dp_avg': 'float64',
-                            'original_value': 'float64',
-                            'group_by_val1': str
-                        },
-                        sep=';',
-                        encoding='latin1',
-                        low_memory=False
-                    )
-                    with self.debug_output:
-                        print("\nAfter loading:")
-                        print("1. group_by_val1 dtype:", self.df['group_by_val1'].dtype)
-                        print("2. First few values:", self.df['group_by_val1'].head().tolist())
-                        print("3. Sample value types:", [type(x) for x in self.df['group_by_val1'].head()])
-                    
-                    with self.debug_output:
-                        print(f"Data loaded successfully. Shape: {self.df.shape}")
-                else:
-                    raise FileNotFoundError("Data file not found")
-                
+                self.df = pd.concat(chunks, ignore_index=True)
+                with self.debug_output:
+                    print(f"Data loaded successfully. Shape: {self.df.shape}")
+
                 # Load queries configuration
                 self.queries_config = pd.read_csv(queries_file, sep=';')
             
@@ -93,22 +86,12 @@ class TableVisualization:
             # Set aggregation options after data is loaded
             self.aggregation_options = [agg for agg in self.ordered_aggregations 
                                       if agg in self.df['aggregated_data'].str.upper().unique()]
-            
-            #ith self.debug_output:
-            #      print("Creating widgets...")
+
             # Create widgets
             self._create_widgets()
-            
 
-            #with self.debug_output:
-            #      print("Displaying interface...")
             # Display interface
-
             self.display_interface()
-            
-            #with self.debug_output:
-            #      print("Initialization complete!")
-
             
         except Exception as e:
             with self.debug_output:
@@ -224,174 +207,98 @@ class TableVisualization:
     def update_table(self, button_clicked=None):
         """Update the table with current selections."""
         try:
-            print("Starting update_table function")
-            
             # Get current selections
             aggregation = self.aggregation_dropdown.value
             hierarchy = self.hierarchy_dropdown.value
             region = self.region_dropdown.value
             uf = self.uf_dropdown.value
             mun = self.mun_dropdown.value
-            
-            print(f"Selected hierarchy: {hierarchy}")  # Basic test print
-            
-            # Base filter for aggregation
+
+            # Base filters
             filtered_df = self.df[
-                (self.df['aggregated_data'].str.upper() == aggregation.upper()) &
-                (self.df['group_by_col2'].isna())
+                (self.df['aggregated_data'].str.upper() == aggregation.upper())
             ]
 
-            entidade_table = pd.DataFrame()
-            # Apply geographic filters based on hierarchy
+            # Set grouping based on hierarchy
             if hierarchy == 'NO_REGIAO':
                 filtered_df = filtered_df[filtered_df['group_by_col1'].str.upper() == 'SG_UF']
                 grouping_col = 'parent_regiao'
                 entity_col = 'Região'
                 total_col = 'Total de UFs'
-                
-                if region != 'Todas':
-                    filtered_df = filtered_df[filtered_df['parent_regiao'] == region]
-                
             elif hierarchy == 'SG_UF':
                 filtered_df = filtered_df[filtered_df['group_by_col1'].str.upper() == 'NO_MUNICIPIO']
                 grouping_col = 'parent_uf'
                 entity_col = 'UF'
                 total_col = 'Total de Municípios'
-                
-                if region != 'Todas':
-                    filtered_df = filtered_df[filtered_df['parent_regiao'] == region]
-                if uf != 'Todas':
-                    filtered_df = filtered_df[filtered_df['parent_uf'] == uf]
-                
             elif hierarchy == 'NO_MUNICIPIO':
                 filtered_df = filtered_df[filtered_df['group_by_col1'].str.upper() == 'CO_ENTIDADE']
                 grouping_col = 'parent_municipio'
                 entity_col = 'Município'
                 total_col = 'Total de Escolas'
-                
-                if region != 'Todas':
-                    filtered_df = filtered_df[filtered_df['parent_regiao'] == region]
-                if uf != 'Todas':
-                    filtered_df = filtered_df[filtered_df['parent_uf'] == uf]
-                if mun != 'Todas':
-                    filtered_df = filtered_df[filtered_df['parent_municipio'] == mun]
-                
-            elif hierarchy == 'CO_ENTIDADE':
+            else:  # CO_ENTIDADE
                 filtered_df = filtered_df[filtered_df['group_by_col1'].str.upper() == 'CO_ENTIDADE']
                 grouping_col = 'group_by_val1'
                 entity_col = 'Escola'
-                total_col = 'Total de Escolas'
-                
-                if region != 'Todas':
-                    filtered_df = filtered_df[filtered_df['parent_regiao'] == region]
-                if uf != 'Todas':
-                    filtered_df = filtered_df[filtered_df['parent_uf'] == uf]
-                if mun != 'Todas':
-                    filtered_df = filtered_df[filtered_df['parent_municipio'] == mun]
-                    
-                base_table = filtered_df[['group_by_val1']].drop_duplicates()
-                base_table.columns = [grouping_col]
-                base_table[total_col] = 1
+                total_col = 'Total de Registros'
 
-            if hierarchy != 'CO_ENTIDADE':
-                base_table = filtered_df.groupby(grouping_col).agg({
-                    'group_by_val1': 'nunique'
-                })
+            # Apply geographic filters
+            if region != 'Todas':
+                filtered_df = filtered_df[filtered_df['parent_regiao'] == region]
+            if uf != 'Todas':
+                filtered_df = filtered_df[filtered_df['parent_uf'] == uf]
+            if mun != 'Todas':
+                filtered_df = filtered_df[filtered_df['parent_municipio'] == mun]
 
-                with self.debug_output:
-                    print(f"base_table 1 group_by_val1: {base_table.sort_values('group_by_val1', ascending=False).head()}")
+            # Create base table with entity counts
+            base_table = filtered_df.groupby(grouping_col).agg({
+                'group_by_val1': 'nunique',  # Count unique entities
+                'original_value': 'median'    # Get median of original values
+            }).reset_index()
 
-                base_table = pd.DataFrame({
-                    grouping_col: base_table.index,
-                    total_col: base_table['group_by_val1'].values
-                })
-            
-            # Sort by total entities in descending order
-            base_table = base_table.sort_values(total_col, ascending=False)
-            
-            # Get unique epsilon-delta combinations, ordered
-            eps_delta_combinations = filtered_df[['epsilon', 'delta']].drop_duplicates().sort_values(
-                ['epsilon', 'delta'],
-                ascending=[True, True]
+            # Count lost values
+            lost_counts = filtered_df[
+                (filtered_df['dp_avg'] == 0.0) | 
+                filtered_df['dp_avg'].isna() | 
+                (filtered_df['lost'] > 0)
+            ].groupby(grouping_col)['group_by_val1'].nunique().reset_index()
+            lost_counts.columns = [grouping_col, 'lost_count']
+
+            # Merge lost counts with base table
+            base_table = base_table.merge(
+                lost_counts, 
+                on=grouping_col, 
+                how='left'
             )
-            
-            # For each epsilon-delta combination, calculate lost entities
-            for _, row in eps_delta_combinations.iterrows():
-                eps, delta = row['epsilon'], row['delta']
-                
-                # Filter for this combination
-                combo_df = filtered_df[
-                    (filtered_df['epsilon'] == eps) & 
-                    (filtered_df['delta'] == delta)
-                ]
-                
-                if hierarchy == 'CO_ENTIDADE':
-                    # For schools, directly identify lost ones
-                    lost_counts = combo_df[
-                        (combo_df['dp_avg'] == 0.0) | 
-                        combo_df['dp_avg'].isna() | 
-                        (combo_df['lost'] > 0)
-                    ][['group_by_val1', 'original_value']].copy()
-                    
-                    lost_counts.columns = [grouping_col, 'original_value']
-                    lost_counts['lost_count'] = 1  # Each row is one school
-                    
-                else:
-                    # For other hierarchies, use the groupby aggregation
-                    lost_counts = combo_df.groupby(grouping_col).agg({
-                        'group_by_val1': lambda g: combo_df.loc[
-                            g.index
-                        ][
-                            (combo_df.loc[g.index, 'dp_avg'] == 0.0) | 
-                            combo_df.loc[g.index, 'dp_avg'].isna() | 
-                            (combo_df.loc[g.index, 'lost'] > 0)
-                        ]['group_by_val1'].nunique(),
-                        'original_value': lambda g: combo_df.loc[
-                            g.index
-                        ][
-                            (combo_df.loc[g.index, 'dp_avg'] == 0.0) | 
-                            combo_df.loc[g.index, 'dp_avg'].isna() | 
-                            (combo_df.loc[g.index, 'lost'] > 0)
-                        ]['original_value'].median()
-                    }).reset_index()
-                    lost_counts.rename(columns={'group_by_val1': 'lost_count'}, inplace=True)
-                '''    
-                with self.debug_output:
-                    print(f"Lost counts: {lost_counts.head()}")
-                    print(f"Base table: {base_table.head()}")
-                    print(f"Grouping col: {grouping_col}")
-                '''    
-                # Add to base table
-                lost_col = f'Perdidos (ε={eps}, δ={delta})'
-                median_col = f'Mediana {aggregation.lower().replace("_", " ")} (ε={eps}, δ={delta})'
-                
 
-                base_table = base_table.merge(
-                    lost_counts,
-                    on=grouping_col,
-                    how='left'
-                )
-                
-                # Calculate and format percentage
-                base_table[lost_col] = base_table.apply(
-                    lambda row: f"{int(row['lost_count'])} ({(row['lost_count']/row[total_col]*100):.1f}%)" 
-                    if pd.notna(row['lost_count']) else "0 (0.0%)",
-                    axis=1
-                )
-                
-                # Add median column for this combination
-                base_table[median_col] = base_table['original_value'].apply(
-                    lambda x: f"{x:.1f}" if pd.notna(x) else "-"
-                )
-                
-                # Drop temporary columns
-                base_table = base_table.drop(['lost_count', 'original_value'], axis=1)
-            
-            # Display table
+            # Fill NaN values in lost_count with 0
+            base_table['lost_count'] = base_table['lost_count'].fillna(0)
+
+            # Rename columns
+            base_table.columns = [grouping_col, total_col, 'original_value', 'lost_count']
+
+            # Calculate and format percentage
+            lost_col = 'Valores Perdidos'
+            median_col = 'Mediana Original'
+            base_table[lost_col] = base_table.apply(
+                lambda row: f"{int(row['lost_count'])} ({(row['lost_count']/row[total_col]*100):.1f}%)" 
+                if pd.notna(row['lost_count']) else "0 (0.0%)",
+                axis=1
+            )
+
+            # Format median column
+            base_table[median_col] = base_table['original_value'].apply(
+                lambda x: f"{x:.1f}" if pd.notna(x) else "-"
+            )
+
+            # Select and order final columns
+            base_table = base_table[[grouping_col, total_col, lost_col, median_col]]
+            base_table = base_table.sort_values(total_col, ascending=False)
+
+            # Display the table
             with self.table_output:
-                clear_output(wait=True)
-                display(HTML(base_table.to_html(index=False)))
-                print("\nTabela atualizada com sucesso!")
+                clear_output()
+                display(base_table)
+
         except Exception as e:
             print(f"Error updating table: {str(e)}")
             print(traceback.format_exc())

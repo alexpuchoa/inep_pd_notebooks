@@ -19,13 +19,13 @@ class LostValuesVisualizationColab:
     def __init__(self, data=None, queries_config=None, data_path=None):
         """Initialize the visualization interface with provided data or from CSV."""
         try:
-            print("Carregando App")
+            #print("Carregando App")
             
             if data is not None and queries_config is not None:
                 # Use provided data
                 self.df = data
                 self.queries_config = queries_config
-                print(f"Using provided data. Shape: {self.df.shape}")
+                #print(f"Using provided data. Shape: {self.df.shape}")
             
             elif data_path:
                 # Load data from files
@@ -33,8 +33,8 @@ class LostValuesVisualizationColab:
                 csv_path = self.data_path / "dp_results_stats_bq.csv"
                 queries_file = self.data_path / "queries_formatadas_bq.csv"
                 
-                print("Loading data...")
-                print(f"Reading CSV from: {data_path}")
+                #print("Loading data...")
+                #print(f"Reading CSV from: {data_path}")
                 
                 # Load data in chunks
                 chunks = []
@@ -55,7 +55,7 @@ class LostValuesVisualizationColab:
                     chunks.append(chunk)
                 
                 self.df = pd.concat(chunks, ignore_index=True)
-                print(f"Data loaded successfully. Shape: {self.df.shape}")
+                #print(f"Data loaded successfully. Shape: {self.df.shape}")
                 
                 # Load queries configuration
                 self.queries_config = pd.read_csv(queries_file, sep=';')
@@ -75,7 +75,7 @@ class LostValuesVisualizationColab:
             # Display interface
             self.display_interface()
             
-            print("Initialization complete!")
+            #print("Initialization complete!")
             
         except Exception as e:
             print(f"Error in initialization: {str(e)}")

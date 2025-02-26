@@ -29,7 +29,8 @@ class UnifiedVisualization:
                     'epsilon': 'float64',
                     'delta': 'float64',
                     'dp_avg': 'float64',
-                    'original_value': 'float64'
+                    'original_value': 'float64',
+                    'group_by_val1': str
                 },
                 sep=';',
                 encoding='latin1',

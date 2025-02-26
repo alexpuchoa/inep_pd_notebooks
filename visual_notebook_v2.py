@@ -43,6 +43,10 @@ class VisualizationNotebook:
             print("Debug widget created")
             display(self.debug_output)
             
+            # Initialize current values
+            self.current_query_type = 1  # Add this line if it's missing
+            print(f"Initial query type: {self.current_query_type}")
+            
             with self.debug_output:
                 print("Debug output is working")
             
@@ -152,15 +156,12 @@ class VisualizationNotebook:
         Conecta os observadores aos widgets para reagir às mudanças.
         """
         try:
-            # Connect query type slider to update internal state
-            self.query_type_slider.observe(self._on_query_type_change, names='value')
-            
-            # Connect geographic filters only for cascading updates
+            # Only connect geographic filters for cascading dropdowns
             self.region_dropdown.observe(self._on_region_change, names='value')
             self.uf_dropdown.observe(self._on_uf_change, names='value')
             self.mun_dropdown.observe(self._on_mun_change, names='value')
             
-            # Connect submit button
+            # Connect submit button - all parameter updates happen here
             with self.debug_output:
                 print("Connecting button...")
             self.submit_button.on_click(self.update_both_plots)
@@ -507,28 +508,21 @@ class VisualizationNotebook:
             print(traceback.format_exc())
 
     def update_both_plots(self, button_clicked=None):
-        """
-        Atualiza ambos os gráficos quando o botão for clicado.
-        """
         print("Button clicked - updating plots")
         try:
-            with self.debug_output:
-                print("Starting plot update...")
-            
-            # Store current values
+            # Update all current values only when button is clicked
             self.current_query_type = self.query_type_slider.value
             self.current_query_model = self.query_model_dropdown.value
             self.current_epsilon = self.epsilon_dropdown.value
             self.current_delta = self.delta_dropdown.value
             self.current_stat = self.stats_dropdown.value
             
-            with self.debug_output:
-                print(f"Selected parameters:")
-                print(f"Query Type: {self.current_query_type}")
-                print(f"Query Model: {self.current_query_model}")
-                print(f"Epsilon: {self.current_epsilon}")
-                print(f"Delta: {self.current_delta}")
-                print(f"Stat: {self.current_stat}")
+            print(f"Parameters updated on button click:")
+            print(f"Query Type: {self.current_query_type}")
+            print(f"Query Model: {self.current_query_model}")
+            print(f"Epsilon: {self.current_epsilon}")
+            print(f"Delta: {self.current_delta}")
+            print(f"Stat: {self.current_stat}")
             
             # Get filtered results
             filtered_results = self.df[

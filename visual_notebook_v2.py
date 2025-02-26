@@ -528,6 +528,9 @@ class VisualizationNotebook:
             
             with self.debug_output:
                 print(f"Initial filter returned {len(filtered_results)} rows")
+                print(f"Sample of filtered data:")
+                if not filtered_results.empty:
+                    print(filtered_results[['query_type', 'query_model', 'epsilon', 'delta', self.current_stat]].head())
             
             if not filtered_results.empty:
                 # Apply geographic filters
@@ -540,15 +543,13 @@ class VisualizationNotebook:
                 
                 with self.debug_output:
                     print(f"After geographic filter: {len(filtered_results)} rows")
+                    print(f"Sample after geographic filter:")
+                    if not filtered_results.empty:
+                        print(filtered_results[['parent_regiao', 'parent_uf', 'parent_municipio', self.current_stat]].head())
                 
-                # Update plots with clear_output
-                with self.stats_fig_widget.batch_update():
-                    self.stats_fig_widget.data = []
-                    self.update_stats_plot(filtered_results, self.current_stat)
-                
-                with self.bars_fig_widget.batch_update():
-                    self.bars_fig_widget.data = []
-                    self.update_bars_plot(filtered_results)
+                # Update plots
+                self.update_stats_plot(filtered_results, self.current_stat)
+                self.update_bars_plot(filtered_results)
                 
                 with self.debug_output:
                     print("Plots updated successfully")
@@ -556,7 +557,7 @@ class VisualizationNotebook:
             else:
                 with self.debug_output:
                     print("No data found for selected parameters")
-                
+            
         except Exception as e:
             with self.debug_output:
                 print(f"Error updating plots: {str(e)}")

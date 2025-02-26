@@ -13,6 +13,7 @@ import pandas as pd
 import numpy as np
 import logging
 from pathlib import Path
+import plotly.io as pio
 
 # Configure logging
 logging.basicConfig(
@@ -21,6 +22,8 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+# This line might have been removed or changed
+pio.renderers.default = 'colab'
 
 class VisualizationNotebook:
     """

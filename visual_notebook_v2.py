@@ -505,7 +505,7 @@ class VisualizationNotebook:
         """
         Atualiza ambos os gráficos quando o botão for clicado.
         """
-        print("Button clicked - updating plots")  # Simple print, not using debug widget
+        print("Button clicked - updating plots")
         try:
             with self.debug_output:
                 print("Starting plot update...")
@@ -538,6 +538,23 @@ class VisualizationNotebook:
                 print(f"Sample of filtered data:")
                 if not filtered_results.empty:
                     print(filtered_results[['query_type', 'query_model', 'epsilon', 'delta', self.current_stat]].head())
+            
+            # Add debug prints
+            print("\nChecking query configuration:")
+            print(f"Query type: {self.current_query_type}")
+            query_metadata = self.queries_config[
+                (self.queries_config['query_type'] == self.current_query_type)
+            ]
+            print("Query metadata:")
+            print(query_metadata[['query_type', 'group_by', 'aggregation_type']].to_string())
+            
+            # After filtering
+            print("\nFiltered data group by columns:")
+            if not filtered_results.empty:
+                for i in range(1, 4):
+                    col = f'group_by_col{i}'
+                    if col in filtered_results.columns:
+                        print(f"{col}: {filtered_results[col].unique()}")
             
             if not filtered_results.empty:
                 # Apply geographic filters
@@ -583,18 +600,6 @@ class VisualizationNotebook:
             if results is None or results.empty:
                 return results
             
-            # Debug: Show input types
-            self.debug_print(f"\nFilter input types:")
-            self.debug_print(f"region type: {type(region)}, value: {region}")
-            self.debug_print(f"uf type: {type(uf)}, value: {uf}")
-            self.debug_print(f"mun type: {type(mun)}, value: {mun}")
-            
-            # Debug: Show sample of results columns
-            self.debug_print("\nResults columns:")
-            self.debug_print(results.columns.tolist())
-            self.debug_print("\nSample of first row:")
-            self.debug_print(results.iloc[0].to_dict())
-            
             filtered_results = results.copy()
             
             # Convert all string columns to string type first
@@ -607,54 +612,31 @@ class VisualizationNotebook:
             uf = str(uf).strip().upper() if uf != 'Todas' else uf
             mun = str(mun).strip().upper() if mun != 'Todas' else mun
             
-            self.debug_print("\nAfter conversion:")
-            self.debug_print(f"region: {region}")
-            self.debug_print(f"uf: {uf}")
-            self.debug_print(f"mun: {mun}")
+            print(f"\nFiltering for:")
+            print(f"Region: {region}")
+            print(f"UF: {uf}")
+            print(f"Municipality: {mun}")
             
             # Apply filters
             if region != 'Todas':
-                mask = (
-                    (filtered_results['parent_regiao'].str.upper() == region) |
-                    ((filtered_results['group_by_col1'] == 'NO_REGIAO') & 
-                     (filtered_results['group_by_val1'].str.upper() == region))
-                )
-                filtered_results = filtered_results[mask]
-                self.debug_print(f"\nAfter region filter: {len(filtered_results)} rows")
+                filtered_results = filtered_results[filtered_results['parent_regiao'].str.upper() == region]
+                print(f"After region filter: {len(filtered_results)} rows")
             
             if uf != 'Todas':
-                mask = (
-                    (filtered_results['parent_uf'].str.upper() == uf) |
-                    ((filtered_results['group_by_col1'] == 'SG_UF') & 
-                     (filtered_results['group_by_val1'].str.upper() == uf))
-                )
-                filtered_results = filtered_results[mask]
-                self.debug_print(f"\nAfter UF filter: {len(filtered_results)} rows")
+                filtered_results = filtered_results[filtered_results['parent_uf'].str.upper() == uf]
+                print(f"After UF filter: {len(filtered_results)} rows")
             
             if mun != 'Todas':
-                mask = (
-                    (filtered_results['parent_municipio'].str.upper() == mun) |
-                    ((filtered_results['group_by_col1'] == 'NO_MUNICIPIO') & 
-                     (filtered_results['group_by_val1'].str.upper() == mun))
-                )
-                filtered_results = filtered_results[mask]
-                self.debug_print(f"\nAfter municipality filter: {len(filtered_results)} rows")
+                filtered_results = filtered_results[filtered_results['parent_municipio'].str.upper() == mun]
+                print(f"After municipality filter: {len(filtered_results)} rows")
+            
+            print("\nUnique values in group_by_val1:")
+            print(filtered_results['group_by_val1'].unique()[:5])
             
             return filtered_results
 
         except Exception as e:
-            self.debug_print(f"Error in filtering: {str(e)}")
-            self.debug_print("\nDebug info:")
-            self.debug_print(f"Region: {region} ({type(region)})")
-            self.debug_print(f"UF: {uf} ({type(uf)})")
-            self.debug_print(f"Municipality: {mun} ({type(mun)})")
-            self.debug_print("\nResults info:")
-            if results is not None:
-                self.debug_print(f"Results shape: {results.shape}")
-                self.debug_print("Results columns:")
-                self.debug_print(results.columns.tolist())
-                self.debug_print("\nResults dtypes:")
-                self.debug_print(results.dtypes)
+            print(f"Error in filtering: {str(e)}")
             return results
 
     def update_stats_plot(self, results, selected_stat):

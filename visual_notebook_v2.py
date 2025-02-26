@@ -158,11 +158,11 @@ class VisualizationNotebook:
             self.mun_dropdown.observe(self._on_mun_change, names='value')
             
             # Connect submit button
-            self.submit_button.on_click(self.update_both_plots)
-            
             with self.debug_output:
-                print("Observers connected successfully")
-                print("Use the filters to select data and click 'Atualizar Gráficos' to update the plots")
+                print("Connecting button...")
+            self.submit_button.on_click(self.update_both_plots)
+            with self.debug_output:
+                print("Button connected!")
             
         except Exception as e:
             self.debug_print(f"ERROR connecting observers: {str(e)}")

@@ -506,25 +506,13 @@ class VisualizationNotebook:
             print(traceback.format_exc())
 
     def update_both_plots(self, button_clicked=None):
-        print("Button clicked - updating plots")
-        print(f"Raw dropdown value: {self.query_type_dropdown.value}")
         try:
-            # Use dropdown value instead of slider
+            # Update all current values only when button is clicked
             self.current_query_type = self.query_type_dropdown.value
-            print(f"current_query_type after assignment: {self.current_query_type}")
-            
-            # Rest of the updates
             self.current_query_model = self.query_model_dropdown.value
             self.current_epsilon = self.epsilon_dropdown.value
             self.current_delta = self.delta_dropdown.value
             self.current_stat = self.stats_dropdown.value
-            
-            print(f"Parameters updated on button click:")
-            print(f"Query Type: {self.current_query_type}")
-            print(f"Query Model: {self.current_query_model}")
-            print(f"Epsilon: {self.current_epsilon}")
-            print(f"Delta: {self.current_delta}")
-            print(f"Stat: {self.current_stat}")
             
             # Get filtered results
             filtered_results = self.df[
@@ -533,29 +521,6 @@ class VisualizationNotebook:
                 (self.df['epsilon'] == self.current_epsilon) &
                 (self.df['delta'] == self.current_delta)
             ]
-            
-            with self.debug_output:
-                print(f"Initial filter returned {len(filtered_results)} rows")
-                print(f"Sample of filtered data:")
-                if not filtered_results.empty:
-                    print(filtered_results[['query_type', 'query_model', 'epsilon', 'delta', self.current_stat]].head())
-            
-            # Add debug prints
-            print("\nChecking query configuration:")
-            print(f"Query type: {self.current_query_type}")
-            query_metadata = self.queries_config[
-                (self.queries_config['query_type'] == self.current_query_type)
-            ]
-            print("Query metadata:")
-            print(query_metadata[['query_type', 'group_by', 'aggregation_type']].to_string())
-            
-            # After filtering
-            print("\nFiltered data group by columns:")
-            if not filtered_results.empty:
-                for i in range(1, 4):
-                    col = f'group_by_col{i}'
-                    if col in filtered_results.columns:
-                        print(f"{col}: {filtered_results[col].unique()}")
             
             if not filtered_results.empty:
                 # Apply geographic filters
@@ -566,34 +531,14 @@ class VisualizationNotebook:
                     self.mun_dropdown.value
                 )
                 
-                with self.debug_output:
-                    print(f"After geographic filter: {len(filtered_results)} rows")
-                    print(f"Sample after geographic filter:")
-                    if not filtered_results.empty:
-                        print(filtered_results[['parent_regiao', 'parent_uf', 'parent_municipio', self.current_stat]].head())
-                
-                # Right before updating plots
-                print(f"About to update plots with {len(filtered_results)} rows")
-                
                 # Update plots
                 self.update_stats_plot(filtered_results, self.current_stat)
-                print("Stats plot updated")
-                
                 self.update_bars_plot(filtered_results)
-                print("Bars plot updated")
-                
-                with self.debug_output:
-                    print("Plots updated successfully")
-                
-            else:
-                with self.debug_output:
-                    print("No data found for selected parameters")
             
         except Exception as e:
-            with self.debug_output:
-                print(f"Error updating plots: {str(e)}")
-                import traceback
-                print(traceback.format_exc())
+            print(f"Error updating plots: {str(e)}")
+            import traceback
+            print(traceback.format_exc())
 
     def filter_results(self, results, region='Todas', uf='Todas', mun='Todas'):
         """Filtra os resultados com base nas seleções geográficas."""

@@ -505,6 +505,7 @@ class VisualizationNotebook:
         """
         Atualiza ambos os gráficos quando o botão for clicado.
         """
+        print("Button clicked - updating plots")  # Simple print, not using debug widget
         try:
             with self.debug_output:
                 print("Starting plot update...")
